@@ -5,6 +5,7 @@ import (
   "time"
   "github.com/bmizerany/pat"
   "net/http"
+  "encoding/json"
 )
 
 type Deploy struct {
@@ -12,18 +13,28 @@ type Deploy struct {
   Sha string
 }
 
+var revisions []Deploy = make([]Deploy, 0)
+
 func ListRevisions(w http.ResponseWriter, req *http.Request) {
-  io.WriteString(w, "revisions: \n")
+  b, err := json.Marshal(revisions)
+  if err == nil {
+    io.WriteString(w, string(b))
+  } else {
+    io.WriteString(w, "[]")
+  }
 }
 
 func CreateRevision(w http.ResponseWriter, req *http.Request) {
-  io.WriteString(w, "created!\n")
+  var sha string = req.URL.Query().Get(":sha")
+  var newDeploy Deploy = Deploy{time.Now(), sha}
+  revisions = append(revisions, newDeploy);
+  io.WriteString(w, "")
 }
 
 func init() {
   muxer := pat.New()
   muxer.Get("/revisions", http.HandlerFunc(ListRevisions))
-  muxer.Post("/revisions", http.HandlerFunc(CreateRevision))
+  muxer.Post("/revisions/:sha", http.HandlerFunc(CreateRevision))
   http.Handle("/", muxer)
 }
 
