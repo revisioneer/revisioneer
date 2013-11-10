@@ -1,8 +1,9 @@
 package main
 
 import (
-  "fmt"
+  "io"
   "time"
+  "github.com/bmizerany/pat"
   "net/http"
 )
 
@@ -11,11 +12,21 @@ type Deploy struct {
   Sha string
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-  fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
+func ListRevisions(w http.ResponseWriter, req *http.Request) {
+  io.WriteString(w, "revisions: \n")
+}
+
+func CreateRevision(w http.ResponseWriter, req *http.Request) {
+  io.WriteString(w, "created!\n")
+}
+
+func init() {
+  muxer := pat.New()
+  muxer.Get("/revisions", http.HandlerFunc(ListRevisions))
+  muxer.Post("/revisions", http.HandlerFunc(CreateRevision))
+  http.Handle("/", muxer)
 }
 
 func main() {
-  http.HandleFunc("/revisions", handler)
   http.ListenAndServe(":8080", nil)
 }
