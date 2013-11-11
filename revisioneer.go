@@ -8,6 +8,7 @@ import (
   "github.com/gorilla/mux"
   "net/http"
   "encoding/json"
+  "os"
 )
 
 type Deploy struct {
@@ -19,6 +20,7 @@ var revisions []Deploy = make([]Deploy, 0)
 
 func ListRevisions(w http.ResponseWriter, req *http.Request) {
   b, err := json.Marshal(revisions)
+  w.Header().Set("Content-Type", "application/json; charset=utf-8")
   if err == nil {
     io.WriteString(w, string(b))
   } else {
@@ -51,6 +53,10 @@ func init() {
 }
 
 func main() {
-  fmt.Printf("Server listening on port %d\n", 8080)
-  http.ListenAndServe(":8080", nil)
+  var port string = os.Getenv("PORT")
+  if port == "" {
+    port = "8080"
+  }
+  fmt.Printf("Server listening on port %s\n", port)
+  http.ListenAndServe(":"+port, nil)
 }
