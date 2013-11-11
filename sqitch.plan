@@ -3,3 +3,4 @@
 %uri=https://github.com/nicolai86/revisioneer
 
 appschema 2013-11-11T22:17:36Z Raphael Randschau <nicolai86@me.com> # Add schema for deployments.
+deployments [appschema] 2013-11-11T22:32:36Z Raphael Randschau <nicolai86@me.com> # Create table to track deployments

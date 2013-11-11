@@ -2,6 +2,6 @@
 
 BEGIN;
 
-CREATE SCHEMA deployments;
+CREATE SCHEMA revisioneer;
 
 COMMIT;

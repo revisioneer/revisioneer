@@ -2,6 +2,6 @@
 
 BEGIN;
 
-DROP SCHEMA deployments;
+DROP SCHEMA revisioneer;
 
 COMMIT;
