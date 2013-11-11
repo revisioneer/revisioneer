@@ -3,6 +3,8 @@ package main
 import (
   "io"
   "time"
+  "log"
+  "fmt"
   "github.com/gorilla/mux"
   "net/http"
   "encoding/json"
@@ -25,9 +27,17 @@ func ListRevisions(w http.ResponseWriter, req *http.Request) {
 }
 
 func CreateRevision(w http.ResponseWriter, req *http.Request) {
-  var sha string = req.URL.Query().Get(":sha")
-  var newDeploy Deploy = Deploy{time.Now(), sha}
-  revisions = append(revisions, newDeploy);
+  dec := json.NewDecoder(req.Body)
+
+  var deploy Deploy
+  err := dec.Decode(&deploy)
+  if err != nil && err != io.EOF {
+    log.Fatal(err)
+  } else {
+    deploy.DeployedAt = time.Now()
+  }
+
+  revisions = append(revisions, deploy);
   io.WriteString(w, "")
 }
 
@@ -41,5 +51,6 @@ func init() {
 }
 
 func main() {
+  fmt.Printf("Server listening on port %d\n", 8080)
   http.ListenAndServe(":8080", nil)
 }
