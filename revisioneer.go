@@ -3,7 +3,7 @@ package main
 import (
   "io"
   "time"
-  "github.com/bmizerany/pat"
+  "github.com/gorilla/mux"
   "net/http"
   "encoding/json"
 )
@@ -32,10 +32,12 @@ func CreateRevision(w http.ResponseWriter, req *http.Request) {
 }
 
 func init() {
-  muxer := pat.New()
-  muxer.Get("/revisions", http.HandlerFunc(ListRevisions))
-  muxer.Post("/revisions/:sha", http.HandlerFunc(CreateRevision))
-  http.Handle("/", muxer)
+  r := mux.NewRouter()
+  r.HandleFunc("/revisions", ListRevisions).
+    Methods("GET")
+  r.HandleFunc("/revisions", CreateRevision).
+    Methods("POST")
+  http.Handle("/", r)
 }
 
 func main() {
