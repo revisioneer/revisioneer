@@ -20,13 +20,26 @@ type Deployments struct {
 }
 
 var hd *hood.Hood
+func Hd() (*hood.Hood) {
+	if hd != nil {
+		return hd
+	}
+
+	var err error
+	hd, err = hood.Open("postgres", "user=nicolai86 dbname=revisioneer sslmode=disable")
+	if err != nil {
+		log.Fatal("failed to connect to postgres", err)
+	}
+	return hd
+}
 
 func ListRevisions(w http.ResponseWriter, req *http.Request) {
 	var revisions []Deployments
-  err := hd.OrderBy("deployed_at").Find(&revisions)
+  err := Hd().OrderBy("deployed_at").Find(&revisions)
   if err != nil {
-    panic(err)
+    log.Fatal("unable to load deployments", err)
   }
+
   b, err := json.Marshal(revisions)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err == nil {
@@ -52,7 +65,7 @@ func CreateRevision(w http.ResponseWriter, req *http.Request) {
 		deploy.DeployedAt = time.Now()
 	}
 
-	 _, err = hd.Save(&deploy)
+	 _, err = Hd().Save(&deploy)
   if err != nil {
     log.Fatal(err)
   }
@@ -70,11 +83,7 @@ func init() {
 }
 
 func main() {
-	var err error
-	hd, err = hood.Open("postgres", "user=nicolai86 dbname=revisioneer sslmode=disable")
-	if err != nil {
-		log.Fatal("failed to connect to postgres", err)
-	}
+	Hd()
 
 	var port string = os.Getenv("PORT")
 	if port == "" {
