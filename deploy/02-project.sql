@@ -1,4 +1,4 @@
--- Deploy project
+-- Deploy 02-project
 
 BEGIN;
 

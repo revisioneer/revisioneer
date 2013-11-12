@@ -1,4 +1,4 @@
--- Verify project
+-- Verify 02-project
 
 BEGIN;
 

@@ -1,4 +1,4 @@
--- Revert deployments
+-- Revert 01-deployments
 
 BEGIN;
 

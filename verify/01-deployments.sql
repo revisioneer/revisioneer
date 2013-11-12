@@ -1,4 +1,4 @@
--- Verify deployments
+-- Verify 01-deployments
 
 BEGIN;
 

@@ -1,4 +1,4 @@
--- Revert add_foreignkey_constraint
+-- Revert 04-add_foreignkey_constraint
 
 BEGIN;
 

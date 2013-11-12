@@ -1,4 +1,4 @@
--- Revert project
+-- Revert 02-project
 
 BEGIN;
 

@@ -1,5 +1,5 @@
--- Deploy add_foreignkey_constraint
--- requires: add_project_id_to_projects
+-- Deploy 04-add_foreignkey_constraint
+-- requires: 03-add_project_id_to_projects
 
 BEGIN;
 

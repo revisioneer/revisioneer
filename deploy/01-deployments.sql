@@ -1,4 +1,4 @@
--- Deploy deployments
+-- Deploy 01-deployments
 
 BEGIN;
 
