@@ -1,32 +1,43 @@
 package main
 
 import (
-	_ "github.com/lib/pq"
-	"github.com/eaigner/hood"
 	"encoding/json"
 	"fmt"
+	"github.com/eaigner/hood"
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/user"
 	"time"
 )
 
 type Deployments struct {
-	Id hood.Id
+	Id         hood.Id
 	Sha        string
 	DeployedAt time.Time
 }
 
 var hd *hood.Hood
-func Hd() (*hood.Hood) {
+
+func Hd() *hood.Hood {
 	if hd != nil {
 		return hd
 	}
 
+	var revDsn = os.Getenv("REV_DSN")
+	if revDsn == "" {
+		user, err := user.Current()
+		if err != nil {
+			log.Fatal(err)
+		}
+		revDsn = "user=" + user.Username + " dbname=revisioneer sslmode=disable"
+	}
+
 	var err error
-	hd, err = hood.Open("postgres", "user=nicolai86 dbname=revisioneer sslmode=disable")
+	hd, err = hood.Open("postgres", revDsn)
 	if err != nil {
 		log.Fatal("failed to connect to postgres", err)
 	}
@@ -35,12 +46,12 @@ func Hd() (*hood.Hood) {
 
 func ListRevisions(w http.ResponseWriter, req *http.Request) {
 	var revisions []Deployments
-  err := Hd().OrderBy("deployed_at").Find(&revisions)
-  if err != nil {
-    log.Fatal("unable to load deployments", err)
-  }
+	err := Hd().OrderBy("deployed_at").Find(&revisions)
+	if err != nil {
+		log.Fatal("unable to load deployments", err)
+	}
 
-  b, err := json.Marshal(revisions)
+	b, err := json.Marshal(revisions)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err == nil {
 		if string(b) == "null" {
@@ -65,10 +76,10 @@ func CreateRevision(w http.ResponseWriter, req *http.Request) {
 		deploy.DeployedAt = time.Now()
 	}
 
-	 _, err = Hd().Save(&deploy)
-  if err != nil {
-    log.Fatal(err)
-  }
+	_, err = Hd().Save(&deploy)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	io.WriteString(w, "")
 }
@@ -90,5 +101,6 @@ func main() {
 		port = "8080"
 	}
 	fmt.Printf("Server listening on port %s\n", port)
+
 	http.ListenAndServe(":"+port, nil)
 }
