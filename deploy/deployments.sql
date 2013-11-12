@@ -1,5 +1,4 @@
 -- Deploy deployments
--- requires: appschema
 
 BEGIN;
 

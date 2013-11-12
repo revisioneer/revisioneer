@@ -18,15 +18,17 @@ type Deployments struct {
 	Id         hood.Id
 	Sha        string
 	DeployedAt time.Time
+	ProjectId	 int
 }
 
-var hd *hood.Hood
+type Projects struct {
+	Id				 hood.Id
+	Name			 string
+	ApiToken	 string
+	CreatedAt	 time.Time
+}
 
 func Hd() *hood.Hood {
-	if hd != nil {
-		return hd
-	}
-
 	var revDsn = os.Getenv("REV_DSN")
 	if revDsn == "" {
 		user, err := user.Current()
@@ -37,16 +39,33 @@ func Hd() *hood.Hood {
 	}
 
 	var err error
-	hd, err = hood.Open("postgres", revDsn)
+	hd, err := hood.Open("postgres", revDsn)
 	if err != nil {
 		log.Fatal("failed to connect to postgres", err)
 	}
+	hd.Log = true
 	return hd
 }
 
 func ListRevisions(w http.ResponseWriter, req *http.Request) {
+	hd := Hd()
+	defer hd.Db.Close()
+
+	apiToken := req.Header.Get("API-TOKEN")
+	var projects []Projects
+	hd.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
+
+	if len(projects) != 1 {
+		http.Error(w, "unknown api token/ project", 500)
+    return
+	}
+
+	var project Projects = projects[0]
+
+	// TODO make sure we have a project
 	var revisions []Deployments
-	err := Hd().OrderBy("deployed_at").Find(&revisions)
+
+	err := hd.Where("project_id", "=", project.Id).OrderBy("deployed_at").Find(&revisions)
 	if err != nil {
 		log.Fatal("unable to load deployments", err)
 	}
@@ -66,6 +85,20 @@ func ListRevisions(w http.ResponseWriter, req *http.Request) {
 }
 
 func CreateRevision(w http.ResponseWriter, req *http.Request) {
+	hd := Hd()
+	defer hd.Db.Close()
+
+	apiToken := req.Header.Get("API-TOKEN")
+	var projects []Projects
+	hd.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
+
+	if len(projects) != 1 {
+		http.Error(w, "unknown api token/ project", 500)
+    return
+	}
+
+	var project Projects = projects[0]
+
 	dec := json.NewDecoder(req.Body)
 
 	var deploy Deployments
@@ -75,13 +108,37 @@ func CreateRevision(w http.ResponseWriter, req *http.Request) {
 	} else {
 		deploy.DeployedAt = time.Now()
 	}
+	deploy.ProjectId = int(project.Id)
 
-	_, err = Hd().Save(&deploy)
+	_, err = hd.Save(&deploy)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	io.WriteString(w, "")
+}
+
+func CreateProject(w http.ResponseWriter, req *http.Request) {
+	hd := Hd()
+	defer hd.Db.Close()
+
+	dec := json.NewDecoder(req.Body)
+
+	var project Projects
+	err := dec.Decode(&project)
+	if err != nil && err != io.EOF {
+		log.Fatal("decode error", err)
+	} else {
+		project.CreatedAt = time.Now()
+	}
+
+	_, err = hd.Save(&project)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b, _ := json.Marshal(project)
+	io.WriteString(w, string(b))
 }
 
 func init() {
@@ -90,6 +147,8 @@ func init() {
 		Methods("GET")
 	r.HandleFunc("/revisions", CreateRevision).
 		Methods("POST")
+  r.HandleFunc("/projects", CreateProject).
+  	Methods("POST")
 	http.Handle("/", r)
 }
 

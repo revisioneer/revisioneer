@@ -10,7 +10,9 @@ import (
 )
 
 func ClearDeployments() {
-	Hd().Exec("DELETE FROM deployments")
+  hd := Hd()
+  defer hd.Db.Close()
+	hd.Exec("DELETE FROM deployments")
 }
 
 func TestCreateRevisionReturnsCreatedRevision(t *testing.T) {
@@ -26,7 +28,9 @@ func TestCreateRevisionReturnsCreatedRevision(t *testing.T) {
   }
 
   var deployments []Deployments
-  err := Hd().OrderBy("deployed_at").Find(&deployments)
+  hd := Hd()
+  defer hd.Db.Close()
+  err := hd.OrderBy("deployed_at").Find(&deployments)
   if err != nil {
     t.Fatalf("Unable to read from PostgreSQL: %v", err)
   }
@@ -58,7 +62,9 @@ func TestListRevisionsReturnsValidJSON(t *testing.T) {
 
   var deployedAt time.Time = time.Now()
 	var deploy Deployments = Deployments{Sha: "a", DeployedAt: deployedAt}
-	_, _ = Hd().Save(&deploy)
+  hd := Hd()
+  defer hd.Db.Close()
+	_, _ = hd.Save(&deploy)
 
 	request, _ := http.NewRequest("GET", "/", nil)
 	response := httptest.NewRecorder()

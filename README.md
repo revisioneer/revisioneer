@@ -28,13 +28,15 @@ REV_DSN="user=$(whoami) dbname=revisioneer sslmode=disable" go run revisioneer.g
 
 ### TODO
 
-- add multi tenancy support /w api tokens as authentication (project 1 - * deployment)
 - add support for deployment changesets (summary of git commit message headlines) (deployment 1 - * changes)
 
 ### Examples
 
+**Create a project**
+curl -X POST "http://127.0.0.1:8080/projects" -d '{ "name": "test", "apiToken": "test" }'
+
 **Create a new revision**
-curl -X POST "http://127.0.0.1:8080/revisions" -d '{ "sha": "asdasd" }'
+curl -X POST "http://127.0.0.1:8080/revisions" -d '{ "sha": "asdasd" }' -H "API-TOKEN: test"
 
 **Read all revisions**
 curl "http://localhost:8080/revisions"
