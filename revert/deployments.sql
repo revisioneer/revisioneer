@@ -2,6 +2,6 @@
 
 BEGIN;
 
-DROP TABLE revisioneer.deployments;
+DROP TABLE public.deployments;
 
 COMMIT;

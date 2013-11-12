@@ -3,7 +3,7 @@
 BEGIN;
 
 SELECT id, sha, deployed_at
-  FROM revisioneer.deployments
+  FROM public.deployments
   WHERE FALSE;
 
 ROLLBACK;
