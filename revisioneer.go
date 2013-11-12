@@ -71,7 +71,7 @@ func CreateRevision(w http.ResponseWriter, req *http.Request) {
 	var deploy Deployments
 	err := dec.Decode(&deploy)
 	if err != nil && err != io.EOF {
-		log.Fatal(err)
+		log.Fatal("decode error", err)
 	} else {
 		deploy.DeployedAt = time.Now()
 	}
