@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/eaigner/hood"
 	"github.com/gorilla/mux"
@@ -18,14 +21,14 @@ type Deployments struct {
 	Id         hood.Id
 	Sha        string
 	DeployedAt time.Time
-	ProjectId	 int
+	ProjectId  int
 }
 
 type Projects struct {
-	Id				 hood.Id
-	Name			 string
-	ApiToken	 string
-	CreatedAt	 time.Time
+	Id        hood.Id
+	Name      string
+	ApiToken  string
+	CreatedAt time.Time
 }
 
 func Hd() *hood.Hood {
@@ -47,7 +50,7 @@ func Hd() *hood.Hood {
 	return hd
 }
 
-func ListRevisions(w http.ResponseWriter, req *http.Request) {
+func RequireProject(req *http.Request) (Projects, error) {
 	hd := Hd()
 	defer hd.Db.Close()
 
@@ -56,11 +59,21 @@ func ListRevisions(w http.ResponseWriter, req *http.Request) {
 	hd.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
 
 	if len(projects) != 1 {
-		http.Error(w, "unknown api token/ project", 500)
-    return
+		return Projects{}, errors.New("Unknown project")
 	}
 
-	var project Projects = projects[0]
+	return projects[0], nil
+}
+
+func ListRevisions(w http.ResponseWriter, req *http.Request) {
+	hd := Hd()
+	defer hd.Db.Close()
+
+	project, error := RequireProject(req)
+	if error != nil {
+		http.Error(w, "unknown api token/ project", 500)
+		return
+	}
 
 	// TODO make sure we have a project
 	var revisions []Deployments
@@ -88,16 +101,11 @@ func CreateRevision(w http.ResponseWriter, req *http.Request) {
 	hd := Hd()
 	defer hd.Db.Close()
 
-	apiToken := req.Header.Get("API-TOKEN")
-	var projects []Projects
-	hd.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
-
-	if len(projects) != 1 {
+	project, error := RequireProject(req)
+	if error != nil {
 		http.Error(w, "unknown api token/ project", 500)
-    return
+		return
 	}
-
-	var project Projects = projects[0]
 
 	dec := json.NewDecoder(req.Body)
 
@@ -118,6 +126,17 @@ func CreateRevision(w http.ResponseWriter, req *http.Request) {
 	io.WriteString(w, "")
 }
 
+const STRLEN = 32
+
+func GenerateApiToken() string {
+	b := make([]byte, STRLEN)
+	rand.Read(b)
+	en := base64.StdEncoding // or URLEncoding
+	d := make([]byte, en.EncodedLen(len(b)))
+	en.Encode(d, b)
+	return string(d)
+}
+
 func CreateProject(w http.ResponseWriter, req *http.Request) {
 	hd := Hd()
 	defer hd.Db.Close()
@@ -131,6 +150,7 @@ func CreateProject(w http.ResponseWriter, req *http.Request) {
 	} else {
 		project.CreatedAt = time.Now()
 	}
+	project.ApiToken = GenerateApiToken()
 
 	_, err = hd.Save(&project)
 	if err != nil {
@@ -147,8 +167,8 @@ func init() {
 		Methods("GET")
 	r.HandleFunc("/revisions", CreateRevision).
 		Methods("POST")
-  r.HandleFunc("/projects", CreateProject).
-  	Methods("POST")
+	r.HandleFunc("/projects", CreateProject).
+		Methods("POST")
 	http.Handle("/", r)
 }
 

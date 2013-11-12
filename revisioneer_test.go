@@ -4,44 +4,44 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
-  "strings"
 )
 
 func ClearDeployments() {
-  hd := Hd()
-  defer hd.Db.Close()
+	hd := Hd()
+	defer hd.Db.Close()
 	hd.Exec("DELETE FROM deployments")
 }
 
 func TestCreateRevisionReturnsCreatedRevision(t *testing.T) {
-  ClearDeployments()
+	ClearDeployments()
 
-  request, _ := http.NewRequest("POST", "/revisions", strings.NewReader("{\"sha\":\"asd\"}"))
-  response := httptest.NewRecorder()
+	request, _ := http.NewRequest("POST", "/revisions", strings.NewReader("{\"sha\":\"asd\"}"))
+	response := httptest.NewRecorder()
 
-  CreateRevision(response, request)
+	CreateRevision(response, request)
 
-  if response.Code != http.StatusOK {
-    t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
-  }
+	if response.Code != http.StatusOK {
+		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
+	}
 
-  var deployments []Deployments
-  hd := Hd()
-  defer hd.Db.Close()
-  err := hd.OrderBy("deployed_at").Find(&deployments)
-  if err != nil {
-    t.Fatalf("Unable to read from PostgreSQL: %v", err)
-  }
-  if len(deployments) != 1 {
-    t.Fatalf("More than 1 entry created: %d", len(deployments))
-  }
+	var deployments []Deployments
+	hd := Hd()
+	defer hd.Db.Close()
+	err := hd.OrderBy("deployed_at").Find(&deployments)
+	if err != nil {
+		t.Fatalf("Unable to read from PostgreSQL: %v", err)
+	}
+	if len(deployments) != 1 {
+		t.Fatalf("More than 1 entry created: %d", len(deployments))
+	}
 
-  var newDeploy Deployments = deployments[0]
-  if newDeploy.Sha != "asd" {
-    t.Fatalf("Did not read proper SHA: %v", newDeploy.Sha)
-  }
+	var newDeploy Deployments = deployments[0]
+	if newDeploy.Sha != "asd" {
+		t.Fatalf("Did not read proper SHA: %v", newDeploy.Sha)
+	}
 }
 
 func TestListRevisionsReturnsWithStatusOK(t *testing.T) {
@@ -60,10 +60,10 @@ func TestListRevisionsReturnsWithStatusOK(t *testing.T) {
 func TestListRevisionsReturnsValidJSON(t *testing.T) {
 	ClearDeployments()
 
-  var deployedAt time.Time = time.Now()
+	var deployedAt time.Time = time.Now()
 	var deploy Deployments = Deployments{Sha: "a", DeployedAt: deployedAt}
-  hd := Hd()
-  defer hd.Db.Close()
+	hd := Hd()
+	defer hd.Db.Close()
 	_, _ = hd.Save(&deploy)
 
 	request, _ := http.NewRequest("GET", "/", nil)
