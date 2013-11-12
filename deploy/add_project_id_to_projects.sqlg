@@ -1,4 +1,4 @@
--- Deploy foreign_keys_on_deployments
+-- Deploy add_project_id_to_projects
 -- requires: project
 -- requires: deployments
 

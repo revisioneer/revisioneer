@@ -1,4 +1,4 @@
--- Revert foreign_keys_on_deployments
+-- Revert add_project_id_to_projects
 
 BEGIN;
 

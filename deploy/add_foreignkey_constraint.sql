@@ -1,5 +1,5 @@
 -- Deploy add_foreignkey_constraint
--- requires: foreign_keys_on_deployments
+-- requires: add_project_id_to_projects
 
 BEGIN;
 

@@ -1,4 +1,4 @@
--- Verify foreign_keys_on_deployments
+-- Verify add_project_id_to_projects
 
 BEGIN;
 
