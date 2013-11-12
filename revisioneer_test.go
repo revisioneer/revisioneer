@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/eaigner/hood"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,16 +10,27 @@ import (
 	"time"
 )
 
-func ClearDeployments() {
+func ClearDeployments() (*hood.Hood) {
 	hd := Hd()
-	defer hd.Db.Close()
 	hd.Exec("DELETE FROM deployments")
+	hd.Exec("DELETE FROM projects")
+	return hd
+}
+
+func CreateTestProject(hd *hood.Hood) (Projects) {
+	var project Projects = Projects{ Name: "Test", ApiToken: "test" }
+	hd.Save(&project)
+	return project
 }
 
 func TestCreateRevisionReturnsCreatedRevision(t *testing.T) {
-	ClearDeployments()
+	hd := ClearDeployments()
+	defer hd.Db.Close()
+
+	project := CreateTestProject(hd)
 
 	request, _ := http.NewRequest("POST", "/revisions", strings.NewReader("{\"sha\":\"asd\"}"))
+	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
 	CreateRevision(response, request)
@@ -28,8 +40,6 @@ func TestCreateRevisionReturnsCreatedRevision(t *testing.T) {
 	}
 
 	var deployments []Deployments
-	hd := Hd()
-	defer hd.Db.Close()
 	err := hd.OrderBy("deployed_at").Find(&deployments)
 	if err != nil {
 		t.Fatalf("Unable to read from PostgreSQL: %v", err)
@@ -45,9 +55,12 @@ func TestCreateRevisionReturnsCreatedRevision(t *testing.T) {
 }
 
 func TestListRevisionsReturnsWithStatusOK(t *testing.T) {
-	ClearDeployments()
+	hd := ClearDeployments()
+	defer hd.Db.Close()
+	project := CreateTestProject(hd)
 
 	request, _ := http.NewRequest("GET", "/revisions", nil)
+	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
 	ListRevisions(response, request)
@@ -58,15 +71,16 @@ func TestListRevisionsReturnsWithStatusOK(t *testing.T) {
 }
 
 func TestListRevisionsReturnsValidJSON(t *testing.T) {
-	ClearDeployments()
+	hd := ClearDeployments()
+	defer hd.Db.Close()
+	project := CreateTestProject(hd)
 
 	var deployedAt time.Time = time.Now()
-	var deploy Deployments = Deployments{Sha: "a", DeployedAt: deployedAt}
-	hd := Hd()
-	defer hd.Db.Close()
+	var deploy Deployments = Deployments{Sha: "a", DeployedAt: deployedAt, ProjectId: int(project.Id)}
 	_, _ = hd.Save(&deploy)
 
-	request, _ := http.NewRequest("GET", "/", nil)
+	request, _ := http.NewRequest("GET", "/revisions", nil)
+	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
 	ListRevisions(response, request)
