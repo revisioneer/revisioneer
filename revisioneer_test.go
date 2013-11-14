@@ -65,7 +65,7 @@ func TestCreateRevisionReturnsCreatedRevision(t *testing.T) {
 	}
 }
 
-func TestListRevisionsReturnsWithStatusOK(t *testing.T) {
+func TestListDeploymentsReturnsWithStatusOK(t *testing.T) {
 	hd := ClearDeployments()
 	defer hd.Db.Close()
 	project := CreateTestProject(hd, "")
@@ -74,7 +74,7 @@ func TestListRevisionsReturnsWithStatusOK(t *testing.T) {
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
-	ListRevisions(response, request)
+	ListDeployments(response, request)
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
@@ -95,7 +95,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	request.Header.Set("API-TOKEN", projectA.ApiToken)
 	response := httptest.NewRecorder()
 
-	ListRevisions(response, request)
+	ListDeployments(response, request)
 
 	decoder := json.NewDecoder(response.Body)
 
@@ -109,7 +109,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	request.Header.Set("API-TOKEN", projectB.ApiToken)
 	response = httptest.NewRecorder()
 
-	ListRevisions(response, request)
+	ListDeployments(response, request)
 
 	decoder = json.NewDecoder(response.Body)
 
@@ -120,7 +120,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	}
 }
 
-func TestListRevisionsReturnsValidJSON(t *testing.T) {
+func TestListDeploymentsReturnsValidJSON(t *testing.T) {
 	hd := ClearDeployments()
 	defer hd.Db.Close()
 	project := CreateTestProject(hd, "")
@@ -131,7 +131,7 @@ func TestListRevisionsReturnsValidJSON(t *testing.T) {
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
-	ListRevisions(response, request)
+	ListDeployments(response, request)
 
 	decoder := json.NewDecoder(response.Body)
 

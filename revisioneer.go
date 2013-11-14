@@ -87,21 +87,21 @@ func ListDeployments(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// load deployments
-	var revisions []Deployments
-	err := hd.Where("project_id", "=", project.Id).OrderBy("deployed_at").Find(&revisions)
+	var deployments []Deployments
+	err := hd.Where("project_id", "=", project.Id).OrderBy("deployed_at").Find(&deployments)
 	if err != nil {
 		log.Fatal("unable to load deployments", err)
 	}
 
 	// load messages for each deployment. N+1 queries
-	for i, revision := range revisions {
-		hd.Where("deployment_id", "=", revision.Id).Find(&revisions[i].Messages)
-		if len(revisions[i].Messages) == 0 {
-			revisions[i].Messages = make([]Messages, 0)
+	for i, revision := range deployments {
+		hd.Where("deployment_id", "=", revision.Id).Find(&deployments[i].Messages)
+		if len(deployments[i].Messages) == 0 {
+			deployments[i].Messages = make([]Messages, 0)
 		}
 	}
 
-	b, err := json.Marshal(revisions)
+	b, err := json.Marshal(deployments)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err == nil {
 		if string(b) == "null" {
