@@ -34,17 +34,17 @@ func CreateTestRevision(hd *hood.Hood, project Projects, sha string) Deployments
 	return deploy
 }
 
-func TestCreateRevisionReturnsCreatedRevision(t *testing.T) {
+func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 	hd := ClearDeployments()
 	defer hd.Db.Close()
 
 	project := CreateTestProject(hd, "")
 
-	request, _ := http.NewRequest("POST", "/revisions", strings.NewReader("{\"sha\":\"asd\"}"))
+	request, _ := http.NewRequest("POST", "/deployments", strings.NewReader("{\"sha\":\"asd\"}"))
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
-	CreateRevision(response, request)
+	CreateDeployment(response, request)
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
@@ -70,7 +70,7 @@ func TestListDeploymentsReturnsWithStatusOK(t *testing.T) {
 	defer hd.Db.Close()
 	project := CreateTestProject(hd, "")
 
-	request, _ := http.NewRequest("GET", "/revisions", nil)
+	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
@@ -91,7 +91,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	revA := CreateTestRevision(hd, projectA, "a")
 	revB := CreateTestRevision(hd, projectB, "b")
 
-	request, _ := http.NewRequest("GET", "/revisions", nil)
+	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", projectA.ApiToken)
 	response := httptest.NewRecorder()
 
@@ -105,7 +105,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 		t.Fatalf("Received foreign deployment: %v", deploymentsA)
 	}
 
-	request, _ = http.NewRequest("GET", "/revisions", nil)
+	request, _ = http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", projectB.ApiToken)
 	response = httptest.NewRecorder()
 
@@ -127,7 +127,7 @@ func TestListDeploymentsReturnsValidJSON(t *testing.T) {
 
 	var deploy Deployments = CreateTestRevision(hd, project, "test")
 
-	request, _ := http.NewRequest("GET", "/revisions", nil)
+	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 

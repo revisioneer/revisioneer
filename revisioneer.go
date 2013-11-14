@@ -115,7 +115,7 @@ func ListDeployments(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func CreateRevision(w http.ResponseWriter, req *http.Request) {
+func CreateDeployment(w http.ResponseWriter, req *http.Request) {
 	hd := Hd()
 	defer hd.Db.Close()
 
@@ -189,9 +189,9 @@ func CreateProject(w http.ResponseWriter, req *http.Request) {
 
 func init() {
 	r := mux.NewRouter()
-	r.HandleFunc("/revisions", ListDeployments).
+	r.HandleFunc("/deployments", ListDeployments).
 		Methods("GET")
-	r.HandleFunc("/revisions", CreateRevision).
+	r.HandleFunc("/deployments", CreateDeployment).
 		Methods("POST")
 	r.HandleFunc("/projects", CreateProject).
 		Methods("POST")

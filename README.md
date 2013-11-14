@@ -33,12 +33,12 @@ REV_DSN="user=$(whoami) dbname=revisioneer sslmode=disable" go run revisioneer.g
 ### Examples
 
 **Create a project**
-curl -X POST "http://127.0.0.1:8080/projects" -d '{ "name": "test", "apiToken": "test" }'
+curl -X POST "http://127.0.0.1:8080/projects" -d '{ "name": "test" }'
 
 **Create a new revision**
-curl -X POST "http://127.0.0.1:8080/revisions" -d '{ "sha": "asdasd" }' -H "API-TOKEN: test"
+curl -X POST "http://127.0.0.1:8080/deployments" -d '{ "sha": "asdasd", "messages": ["hey", "bar"] }' -H "API-TOKEN: test"
 
-**Read all revisions**
-curl "http://localhost:8080/revisions"
+**Read all deployments**
+curl "http://localhost:8080/deployments"
 
 [1]:https://github.com/theory/sqitch
