@@ -102,8 +102,7 @@ func ListDeployments(w http.ResponseWriter, req *http.Request) {
 
 	// load deployments
 	var deployments []Deployments
-	err := hd.Where("project_id", "=", project.Id).OrderBy("deployed_at").Find(&deployments)
-	if err != nil {
+	if err := hd.Where("project_id", "=", project.Id).OrderBy("deployed_at").Find(&deployments); err != nil {
 		log.Fatal("unable to load deployments", err)
 	}
 
@@ -142,15 +141,14 @@ func CreateDeployment(w http.ResponseWriter, req *http.Request) {
 	dec := json.NewDecoder(req.Body)
 
 	var deploy Deployments
-	err := dec.Decode(&deploy)
-	if err != nil && err != io.EOF {
+	if err := dec.Decode(&deploy); err != nil && err != io.EOF {
 		log.Fatal("decode error", err)
 	} else {
 		deploy.DeployedAt = time.Now()
 	}
 	deploy.ProjectId = int(project.Id)
 
-	_, err = hd.Save(&deploy)
+	_, err := hd.Save(&deploy)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -169,12 +167,14 @@ func CreateDeployment(w http.ResponseWriter, req *http.Request) {
 const STRLEN = 32
 
 func GenerateApiToken() string {
-	b := make([]byte, STRLEN)
-	rand.Read(b)
-	en := base64.StdEncoding // or URLEncoding
-	d := make([]byte, en.EncodedLen(len(b)))
-	en.Encode(d, b)
-	return string(d)
+	bytes := make([]byte, STRLEN)
+	rand.Read(bytes)
+
+	encoding := base64.StdEncoding
+	encoded := make([]byte, encoding.EncodedLen(len(bytes)))
+	encoding.Encode(encoded, bytes)
+
+	return string(encoded)
 }
 
 func CreateProject(w http.ResponseWriter, req *http.Request) {
@@ -184,15 +184,14 @@ func CreateProject(w http.ResponseWriter, req *http.Request) {
 	dec := json.NewDecoder(req.Body)
 
 	var project Projects
-	err := dec.Decode(&project)
-	if err != nil && err != io.EOF {
+	if err := dec.Decode(&project); err != nil && err != io.EOF {
 		log.Fatal("decode error", err)
 	} else {
 		project.CreatedAt = time.Now()
 	}
 	project.ApiToken = GenerateApiToken()
 
-	_, err = hd.Save(&project)
+	_, err := hd.Save(&project)
 	if err != nil {
 		log.Fatal(err)
 	}
