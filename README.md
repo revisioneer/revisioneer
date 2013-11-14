@@ -54,7 +54,8 @@ Make sure to keep the `api_token` around. There is currently no way to retrieve 
 
 #### Read all deployments
 
-    curl "http://localhost:8080/deployments" -H "API-TOKEN: q+fehEVx5Kxast2DdUUnKaQpNiZ4GTsmmaYerNwDXDE="
+    curl "http://localhost:8080/deployments" \
+      -H "API-TOKEN: q+fehEVx5Kxast2DdUUnKaQpNiZ4GTsmmaYerNwDXDE="
     # => 200 OK
     [
         {
