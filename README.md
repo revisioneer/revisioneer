@@ -1,6 +1,11 @@
 # revisioneer
 
-create deployment timelines to communicate changes easier with your clients.
+create deployment timelines to communicate changes to your clients.
+revisioneer is a backend written in Go which sole purpose is to store your
+deployments & changeset messages you want to communicate.
+
+You can retrieve those informations at any time, but how you display them
+is entirely up to you.
 
 ## Tests
 
@@ -26,19 +31,43 @@ sqitch deploy
 REV_DSN="user=$(whoami) dbname=revisioneer sslmode=disable" go run revisioneer.go
 ```
 
+### API Examples
+
+#### Create a project
+
+    curl -X POST "http://127.0.0.1:8080/projects" -d '{ "name": "test" }'
+    # => 200 OK
+    {
+       "name": "test",
+       "api_token": "q+fehEVx5Kxast2DdUUnKaQpNiZ4GTsmmaYerNwDXDE=",
+       "created_at": "2013-11-14T22:48:54.431707172+01:00"
+    }
+
+Make sure to keep the `api_token` around. There is currently no way to retrieve it.
+
+#### Create a new deployment information
+
+    curl -X POST "http://127.0.0.1:8080/deployments" \
+      -d '{ "sha": "61722b0020", "messages": ["* added support for messages"] }' \
+      -H "API-TOKEN: q+fehEVx5Kxast2DdUUnKaQpNiZ4GTsmmaYerNwDXDE="
+    # => 200 OK
+
+#### Read all deployments
+
+    curl "http://localhost:8080/deployments" -H "API-TOKEN: q+fehEVx5Kxast2DdUUnKaQpNiZ4GTsmmaYerNwDXDE="
+    # => 200 OK
+    [
+        {
+            "sha": "61722b0020",
+            "deployed_at": "2013-11-14T22:52:40.746848+01:00",
+            "messages": [
+                "* added support for messages"
+            ]
+        }
+    ]
+
 ### TODO
 
 - add support for paginating the deployments
-
-### Examples
-
-**Create a project**
-curl -X POST "http://127.0.0.1:8080/projects" -d '{ "name": "test" }'
-
-**Create a new revision**
-curl -X POST "http://127.0.0.1:8080/deployments" -d '{ "sha": "asdasd", "messages": ["hey", "bar"] }' -H "API-TOKEN: test"
-
-**Read all deployments**
-curl "http://localhost:8080/deployments"
 
 [1]:https://github.com/theory/sqitch
