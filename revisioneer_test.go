@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/eaigner/hood"
 	"encoding/json"
+	"github.com/eaigner/hood"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,26 +10,26 @@ import (
 	"time"
 )
 
-func ClearDeployments() (*hood.Hood) {
+func ClearDeployments() *hood.Hood {
 	hd := Hd()
 	hd.Exec("DELETE FROM deployments")
 	hd.Exec("DELETE FROM projects")
 	return hd
 }
 
-func CreateTestProject(hd *hood.Hood, apiToken string) (Projects) {
+func CreateTestProject(hd *hood.Hood, apiToken string) Projects {
 	if apiToken == "" {
 		apiToken = "test"
 	}
 
-	var project Projects = Projects{ Name: "Test", ApiToken: apiToken }
+	var project Projects = Projects{Name: "Test", ApiToken: apiToken}
 	hd.Save(&project)
 	return project
 }
 
-func CreateTestRevision(hd *hood.Hood, project Projects, sha string) (Deployments) {
+func CreateTestRevision(hd *hood.Hood, project Projects, sha string) Deployments {
 	var deployedAt time.Time = time.Now()
-	var deploy Deployments = Deployments{ Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id) }
+	var deploy Deployments = Deployments{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
 	_, _ = hd.Save(&deploy)
 	return deploy
 }
@@ -102,7 +102,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	var deploymentsA []Deployments
 	_ = decoder.Decode(&deploymentsA)
 	if deploymentsA[0].Sha != revA.Sha || len(deploymentsA) > 1 {
-		t.Fatalf("Received foreign deployment: %v", deploymentsA);
+		t.Fatalf("Received foreign deployment: %v", deploymentsA)
 	}
 
 	request, _ = http.NewRequest("GET", "/revisions", nil)
@@ -116,7 +116,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	var deploymentsB []Deployments
 	_ = decoder.Decode(&deploymentsB)
 	if deploymentsB[0].Sha != revB.Sha || len(deploymentsB) > 1 {
-		t.Fatalf("Received foreign deployment: %v", deploymentsB);
+		t.Fatalf("Received foreign deployment: %v", deploymentsB)
 	}
 }
 

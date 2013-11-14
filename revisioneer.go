@@ -17,11 +17,22 @@ import (
 	"time"
 )
 
+type Messages struct {
+	Id           hood.Id
+	Message      string
+	DeploymentId int
+}
+
+func (m Messages) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Message)
+}
+
 type Deployments struct {
-	Id         hood.Id
-	Sha        string
-	DeployedAt time.Time
-	ProjectId  int
+	Id         hood.Id    `json:"-"`
+	Sha        string     `json:"sha"`
+	DeployedAt time.Time  `json:"deployed_at"`
+	ProjectId  int        `json:"-"`
+	Messages   []Messages `sql:"-" json:"messages"`
 }
 
 type Projects struct {
@@ -65,7 +76,7 @@ func RequireProject(req *http.Request) (Projects, error) {
 	return projects[0], nil
 }
 
-func ListRevisions(w http.ResponseWriter, req *http.Request) {
+func ListDeployments(w http.ResponseWriter, req *http.Request) {
 	hd := Hd()
 	defer hd.Db.Close()
 
@@ -75,12 +86,19 @@ func ListRevisions(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// TODO make sure we have a project
+	// load deployments
 	var revisions []Deployments
-
 	err := hd.Where("project_id", "=", project.Id).OrderBy("deployed_at").Find(&revisions)
 	if err != nil {
 		log.Fatal("unable to load deployments", err)
+	}
+
+	// load messages for each deployment. N+1 queries
+	for i, revision := range revisions {
+		hd.Where("deployment_id", "=", revision.Id).Find(&revisions[i].Messages)
+		if len(revisions[i].Messages) == 0 {
+			revisions[i].Messages = make([]Messages, 0)
+		}
 	}
 
 	b, err := json.Marshal(revisions)
@@ -123,6 +141,14 @@ func CreateRevision(w http.ResponseWriter, req *http.Request) {
 		log.Fatal(err)
 	}
 
+	for _, message := range deploy.Messages {
+		message.DeploymentId = int(deploy.Id)
+		_, err = hd.Save(&message)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	io.WriteString(w, "")
 }
 
@@ -163,7 +189,7 @@ func CreateProject(w http.ResponseWriter, req *http.Request) {
 
 func init() {
 	r := mux.NewRouter()
-	r.HandleFunc("/revisions", ListRevisions).
+	r.HandleFunc("/revisions", ListDeployments).
 		Methods("GET")
 	r.HandleFunc("/revisions", CreateRevision).
 		Methods("POST")
