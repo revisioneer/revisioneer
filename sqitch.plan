@@ -6,3 +6,5 @@
 02-project 2013-11-12T20:20:05Z Raphael Randschau <nicolai86@me.com># project have an api token and many deployments
 03-add_project_id_to_projects [02-project 01-deployments] 2013-11-12T20:23:35Z Raphael Randschau <nicolai86@me.com># adds a foreign key for deployments -> project
 04-add_foreignkey_constraint [03-add_project_id_to_projects] 2013-11-12T20:28:04Z Raphael Randschau <nicolai86@me.com># adds foreignkey constraint for project_id
+05-messages [01-deployments] 2013-11-14T20:06:49Z Raphael Randschau <nicolai86@me.com># deployments contain changsets. changesets are represented as messages
+06-add_messages_deployment_fk [05-messages] 2013-11-14T20:10:52Z Raphael Randschau <nicolai86@me.com># add foreign_key constraint for messages <-> deployments

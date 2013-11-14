@@ -4,6 +4,8 @@
 
 BEGIN;
 
+SET client_min_messages = 'warning';
+
 ALTER TABLE public.deployments
   ADD COLUMN project_id int;
 
