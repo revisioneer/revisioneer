@@ -28,7 +28,7 @@ REV_DSN="user=$(whoami) dbname=revisioneer sslmode=disable" go run revisioneer.g
 
 ### TODO
 
-- add support for deployment changesets (summary of git commit message headlines) (deployment 1 - * changes)
+- add support for paginating the deployments
 
 ### Examples
 
