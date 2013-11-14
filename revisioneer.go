@@ -27,6 +27,20 @@ func (m Messages) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.Message)
 }
 
+func (m *Messages) UnmarshalJSON(data []byte) error {
+	if m == nil {
+		*m = Messages{}
+	}
+
+	var message string
+	if err := json.Unmarshal(data, &message); err != nil {
+		return err
+	}
+	(*m).Message = message
+
+	return nil
+}
+
 type Deployments struct {
 	Id         hood.Id    `json:"-"`
 	Sha        string     `json:"sha"`
@@ -36,10 +50,10 @@ type Deployments struct {
 }
 
 type Projects struct {
-	Id        hood.Id
-	Name      string
-	ApiToken  string
-	CreatedAt time.Time
+	Id        hood.Id   `json:"-"`
+	Name      string    `json:"name"`
+	ApiToken  string    `json:"api_token"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func Hd() *hood.Hood {
@@ -94,8 +108,8 @@ func ListDeployments(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// load messages for each deployment. N+1 queries
-	for i, revision := range deployments {
-		hd.Where("deployment_id", "=", revision.Id).Find(&deployments[i].Messages)
+	for i, deployment := range deployments {
+		hd.Where("deployment_id", "=", deployment.Id).Find(&deployments[i].Messages)
 		if len(deployments[i].Messages) == 0 {
 			deployments[i].Messages = make([]Messages, 0)
 		}
