@@ -67,8 +67,6 @@ Make sure to keep the `api_token` around. There is currently no way to retrieve 
         }
     ]
 
-### TODO
-
-- add support for paginating the deployments
+Returns only the most recent 20 deployments. You can adjust this using `page` and `limit` parameters.
 
 [1]:https://github.com/theory/sqitch
