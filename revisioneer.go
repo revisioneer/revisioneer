@@ -11,9 +11,11 @@ import (
 	_ "github.com/lib/pq"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/user"
+	"strconv"
 	"time"
 )
 
@@ -100,9 +102,29 @@ func ListDeployments(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	limit, err := strconv.Atoi(req.URL.Query().Get("limit"))
+	if err != nil {
+		limit = 20
+	}
+	limit = int(math.Min(math.Abs(float64(limit)), 100.0))
+
+	var page int
+	page, err = strconv.Atoi(req.URL.Query().Get("page"))
+	if err != nil {
+		page = 1
+	}
+	page = int(math.Max(float64(page), 1.0))
+
 	// load deployments
 	var deployments []Deployments
-	if err := hd.Where("project_id", "=", project.Id).OrderBy("deployed_at").Find(&deployments); err != nil {
+	err = hd.
+		Where("project_id", "=", project.Id).
+		OrderBy("deployed_at").
+		Desc().
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&deployments)
+	if err != nil {
 		log.Fatal("unable to load deployments", err)
 	}
 
