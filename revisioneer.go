@@ -278,7 +278,18 @@ func main() {
 	time.Sleep(1e9)
 }
 
+func writePid() {
+	var file, error = os.OpenFile("tmp/rev.pid", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+	if error == nil {
+		var line = fmt.Sprintf("%v", os.Getpid())
+		file.WriteString(line)
+		file.Close()
+	}
+}
+
 func serve(l net.Listener) {
+	writePid()
+
 	Hd()
 
 	r := mux.NewRouter()
