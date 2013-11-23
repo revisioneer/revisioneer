@@ -12,6 +12,7 @@ import (
 
 func ClearDeployments() *hood.Hood {
 	hd := Hd()
+	hd.Exec("DELETE FROM messages")
 	hd.Exec("DELETE FROM deployments")
 	hd.Exec("DELETE FROM projects")
 	return hd
