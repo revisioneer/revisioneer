@@ -48,7 +48,7 @@ Make sure to keep the `api_token` around. There is currently no way to retrieve 
 #### Create a new deployment information
 
     curl -X POST "http://127.0.0.1:8080/deployments" \
-      -d '{ "sha": "61722b0020", "messages": ["* added support for messages"] }' \
+      -d '{ "sha": "61722b0020", "messages": ["* added support for messages"], "new_commit_counter": 1 }' \
       -H "API-TOKEN: q+fehEVx5Kxast2DdUUnKaQpNiZ4GTsmmaYerNwDXDE="
     # => 200 OK
 
