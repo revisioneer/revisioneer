@@ -19,7 +19,6 @@ import (
 	"os/user"
 	"strconv"
 	"syscall"
-	"sync"
 	"time"
 )
 
@@ -234,37 +233,30 @@ func init() {
 }
 
 func main() {
-	// Inherit a net.Listener from our parent process or listen anew.
-	ch := make(chan struct{})
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
 	l, err := goagain.Listener()
 	if nil != err {
-
-		// Listen on a TCP or a UNIX domain socket (TCP here).
 		var port string = os.Getenv("PORT")
 		if port == "" {
 			port = "8080"
 		}
 
 		// Listen on a TCP or a UNIX domain socket (TCP here).
-		l, err = net.Listen("tcp", "0.0.0.0:"+port)
+		l, err = net.Listen("tcp", "0.0.0.0:" + port)
 		if nil != err {
 			log.Fatalln(err)
 		}
 		log.Printf("listening on %v", l.Addr())
 
 		// Accept connections in a new goroutine.
-		go serve(l, ch, wg)
+		go serve(l)
 
 	} else {
 
-		// Resume listening and accepting connections in a new goroutine.
+		// Resume accepting connections in a new goroutine.
 		log.Printf("resuming listening on %v", l.Addr())
-		go serve(l, ch, wg)
+		go serve(l)
 
-		// If this is the child, send the parent SIGUSR2.  If this is the
-		// parent, send the child SIGQUIT.
+		// Kill the parent, now that the child has started successfully.
 		if err := goagain.Kill(); nil != err {
 			log.Fatalln(err)
 		}
@@ -272,51 +264,31 @@ func main() {
 	}
 
 	// Block the main goroutine awaiting signals.
-	sig, err := goagain.Wait(l)
-	if nil != err {
+	if _, err := goagain.Wait(l); nil != err {
 		log.Fatalln(err)
 	}
 
 	// Do whatever's necessary to ensure a graceful exit like waiting for
 	// goroutines to terminate or a channel to become closed.
 	//
-	// In this case, we'll close the channel to signal the goroutine to stop
-	// accepting connections and wait for the goroutine to exit.
-	close(ch)
-	wg.Wait()
-
-	// If we received SIGUSR2, re-exec the parent process.
-	if goagain.SIGUSR2 == sig {
-		if err := goagain.Exec(l); nil != err {
-			log.Fatalln(err)
-		}
+	// In this case, we'll simply stop listening and wait one second.
+	if err := l.Close(); nil != err {
+		log.Fatalln(err)
 	}
+	time.Sleep(1e9)
 }
 
-func serve(l net.Listener, ch chan struct{}, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for {
-		// Break out of the accept loop on the next iteration after the
-		// process was signaled and our channel was closed.
-		select {
-		case <-ch:
-			return
-		default:
-		}
+func serve(l net.Listener) {
+	Hd()
 
-		// Set a deadline so Accept doesn't block forever, which gives
-		// us an opportunity to stop gracefully.
-		Hd()
+	r := mux.NewRouter()
+	r.HandleFunc("/deployments", ListDeployments).
+		Methods("GET")
+	r.HandleFunc("/deployments", CreateDeployment).
+		Methods("POST")
+	r.HandleFunc("/projects", CreateProject).
+		Methods("POST")
+	http.Handle("/", r)
 
-		r := mux.NewRouter()
-		r.HandleFunc("/deployments", ListDeployments).
-			Methods("GET")
-		r.HandleFunc("/deployments", CreateDeployment).
-			Methods("POST")
-		r.HandleFunc("/projects", CreateProject).
-			Methods("POST")
-		http.Handle("/", r)
-
-		http.Serve(l, r)
-	}
+	http.Serve(l, r)
 }
