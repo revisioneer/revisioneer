@@ -279,7 +279,7 @@ func main() {
 }
 
 func writePid() {
-	var file, error = os.OpenFile("tmp/rev.pid", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+	var file, error = os.OpenFile("tmp/rev.pid", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
 	if error == nil {
 		var line = fmt.Sprintf("%v", os.Getpid())
 		file.WriteString(line)
