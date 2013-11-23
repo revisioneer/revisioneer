@@ -9,13 +9,16 @@ import (
 	"github.com/eaigner/hood"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/rcrowley/goagain"
 	"io"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"os/user"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -224,6 +227,60 @@ func CreateProject(w http.ResponseWriter, req *http.Request) {
 }
 
 func init() {
+	goagain.Strategy = goagain.Double
+	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
+	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
+}
+
+func main() {
+	l, err := goagain.Listener()
+	if nil != err {
+		var port string = os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+
+		// Listen on a TCP or a UNIX domain socket (TCP here).
+		l, err = net.Listen("tcp", "0.0.0.0:" + port)
+		if nil != err {
+			log.Fatalln(err)
+		}
+		log.Printf("listening on %v", l.Addr())
+
+		// Accept connections in a new goroutine.
+		go serve(l)
+
+	} else {
+
+		// Resume accepting connections in a new goroutine.
+		log.Printf("resuming listening on %v", l.Addr())
+		go serve(l)
+
+		// Kill the parent, now that the child has started successfully.
+		if err := goagain.Kill(); nil != err {
+			log.Fatalln(err)
+		}
+
+	}
+
+	// Block the main goroutine awaiting signals.
+	if _, err := goagain.Wait(l); nil != err {
+		log.Fatalln(err)
+	}
+
+	// Do whatever's necessary to ensure a graceful exit like waiting for
+	// goroutines to terminate or a channel to become closed.
+	//
+	// In this case, we'll simply stop listening and wait one second.
+	if err := l.Close(); nil != err {
+		log.Fatalln(err)
+	}
+	time.Sleep(1e9)
+}
+
+func serve(l net.Listener) {
+	Hd()
+
 	r := mux.NewRouter()
 	r.HandleFunc("/deployments", ListDeployments).
 		Methods("GET")
@@ -232,16 +289,6 @@ func init() {
 	r.HandleFunc("/projects", CreateProject).
 		Methods("POST")
 	http.Handle("/", r)
-}
 
-func main() {
-	Hd()
-
-	var port string = os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	fmt.Printf("Server listening on port %s\n", port)
-
-	http.ListenAndServe(":"+port, nil)
+	http.Serve(l, r)
 }
