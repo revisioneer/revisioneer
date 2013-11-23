@@ -8,3 +8,4 @@
 04-add_foreignkey_constraint [03-add_project_id_to_projects] 2013-11-12T20:28:04Z Raphael Randschau <nicolai86@me.com># adds foreignkey constraint for project_id
 05-messages [01-deployments] 2013-11-14T20:06:49Z Raphael Randschau <nicolai86@me.com># deployments contain changsets. changesets are represented as messages
 06-add_messages_deployment_fk [05-messages] 2013-11-14T20:10:52Z Raphael Randschau <nicolai86@me.com># add foreign_key constraint for messages <-> deployments
+07-add_new_commits_counter_to_deployments [01-deployments] 2013-11-23T17:37:04Z Raphael Randschau <nicolai86@me.com># add number of new commits to deployment.\n\njust an indicator of home many commits where added between multiple deployments
