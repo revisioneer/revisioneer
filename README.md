@@ -7,6 +7,8 @@ deployments & changeset messages you want to communicate.
 You can retrieve those informations at any time, but how you display them
 is entirely up to you.
 
+The service is provisioned using ansible. So take a look at [revisions-provisioning](https://github.com/nicolai86/revisions-provisioning) if you want to run your own.
+
 ## Tests
 
 To run the testsuite you need to have a PostgreSQL server running & deployed. Revisioneer uses [sqitch][1] for schema management. Thus you need to run
