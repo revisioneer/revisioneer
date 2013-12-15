@@ -9,7 +9,7 @@ import (
 	"github.com/eaigner/hood"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
-	"github.com/nicolai86/goagain"
+	"github.com/rcrowley/goagain"
 	"io"
 	"log"
 	"math"
