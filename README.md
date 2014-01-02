@@ -18,10 +18,10 @@ createdb revisioneer_test
 sqitch -d revisioneer_test deploy
 ```
 
-Then you can use `go` to run the testsuite:
+Then you can use `gom` to run the testsuite:
 
 ```
-REV_DSN="user=$(whoami) dbname=revisioneer_test sslmode=disable" go test
+REV_DSN="user=$(whoami) dbname=revisioneer_test sslmode=disable" gom test
 ```
 
 ## Executing
@@ -30,7 +30,8 @@ REV_DSN="user=$(whoami) dbname=revisioneer_test sslmode=disable" go test
 createdb revisioneer
 sqitch deploy
 
-REV_DSN="user=$(whoami) dbname=revisioneer sslmode=disable" go run revisioneer.go
+gom build
+REV_DSN="user=$(whoami) dbname=revisioneer sslmode=disable" ./revisioneer
 ```
 
 ### API Examples
