@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"database/sql"
 	"github.com/eaigner/hood"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -61,6 +62,9 @@ type Projects struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+var db *sql.DB
+var hd *hood.Hood
+
 func Hd() *hood.Hood {
 	var revDsn = os.Getenv("REV_DSN")
 	if revDsn == "" {
@@ -72,18 +76,18 @@ func Hd() *hood.Hood {
 	}
 
 	var err error
-	hd, err := hood.Open("postgres", revDsn)
+	db, err = sql.Open("postgres", revDsn)
 	if err != nil {
 		log.Fatal("failed to connect to postgres", err)
 	}
-	hd.Log = true
-	return hd
+	db.SetMaxIdleConns(100)
+
+	newHd := hood.New(db, hood.NewPostgres())
+	newHd.Log = true
+	return newHd
 }
 
 func RequireProject(req *http.Request) (Projects, error) {
-	hd := Hd()
-	defer hd.Db.Close()
-
 	apiToken := req.Header.Get("API-TOKEN")
 	var projects []Projects
 	hd.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
@@ -96,9 +100,6 @@ func RequireProject(req *http.Request) (Projects, error) {
 }
 
 func ListDeployments(w http.ResponseWriter, req *http.Request) {
-	hd := Hd()
-	defer hd.Db.Close()
-
 	project, error := RequireProject(req)
 	if error != nil {
 		http.Error(w, "unknown api token/ project", 500)
@@ -154,9 +155,6 @@ func ListDeployments(w http.ResponseWriter, req *http.Request) {
 }
 
 func CreateDeployment(w http.ResponseWriter, req *http.Request) {
-	hd := Hd()
-	defer hd.Db.Close()
-
 	project, error := RequireProject(req)
 	if error != nil {
 		http.Error(w, "unknown api token/ project", 500)
@@ -203,9 +201,6 @@ func GenerateApiToken() string {
 }
 
 func CreateProject(w http.ResponseWriter, req *http.Request) {
-	hd := Hd()
-	defer hd.Db.Close()
-
 	dec := json.NewDecoder(req.Body)
 
 	var project Projects
@@ -228,6 +223,8 @@ func CreateProject(w http.ResponseWriter, req *http.Request) {
 func init() {
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
+
+	hd = Hd()
 }
 
 func main() {
@@ -245,7 +242,7 @@ func main() {
 
 	writePid()
 
-	Hd()
+	defer hd.Db.Close()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/deployments", ListDeployments).

@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/eaigner/hood"
+	_ "github.com/eaigner/hood"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,15 +10,17 @@ import (
 	"time"
 )
 
-func ClearDeployments() *hood.Hood {
-	hd := Hd()
+func init() {
+	hd = Hd()
+}
+
+func ClearDeployments() {
 	hd.Exec("DELETE FROM messages")
 	hd.Exec("DELETE FROM deployments")
 	hd.Exec("DELETE FROM projects")
-	return hd
 }
 
-func CreateTestProject(hd *hood.Hood, apiToken string) Projects {
+func CreateTestProject(apiToken string) Projects {
 	if apiToken == "" {
 		apiToken = "test"
 	}
@@ -28,7 +30,7 @@ func CreateTestProject(hd *hood.Hood, apiToken string) Projects {
 	return project
 }
 
-func CreateTestRevision(hd *hood.Hood, project Projects, sha string) Deployments {
+func CreateTestRevision(project Projects, sha string) Deployments {
 	var deployedAt time.Time = time.Now()
 	var deploy Deployments = Deployments{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
 	_, _ = hd.Save(&deploy)
@@ -36,10 +38,9 @@ func CreateTestRevision(hd *hood.Hood, project Projects, sha string) Deployments
 }
 
 func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
-	hd := ClearDeployments()
-	defer hd.Db.Close()
+	ClearDeployments()
 
-	project := CreateTestProject(hd, "")
+	project := CreateTestProject("")
 
 	request, _ := http.NewRequest("POST", "/deployments", strings.NewReader("{\"sha\":\"asd\"}"))
 	request.Header.Set("API-TOKEN", project.ApiToken)
@@ -67,9 +68,7 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 }
 
 func TestListDeploymentsReturnsWithStatusOK(t *testing.T) {
-	hd := ClearDeployments()
-	defer hd.Db.Close()
-	project := CreateTestProject(hd, "")
+	project := CreateTestProject("")
 
 	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", project.ApiToken)
@@ -83,14 +82,11 @@ func TestListDeploymentsReturnsWithStatusOK(t *testing.T) {
 }
 
 func TestRevisionsAreScopedByApiToken(t *testing.T) {
-	hd := ClearDeployments()
-	defer hd.Db.Close()
+	projectA := CreateTestProject("testA")
+	projectB := CreateTestProject("testB")
 
-	projectA := CreateTestProject(hd, "testA")
-	projectB := CreateTestProject(hd, "testB")
-
-	revA := CreateTestRevision(hd, projectA, "a")
-	revB := CreateTestRevision(hd, projectB, "b")
+	revA := CreateTestRevision(projectA, "a")
+	revB := CreateTestRevision(projectB, "b")
 
 	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", projectA.ApiToken)
@@ -122,11 +118,9 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 }
 
 func TestListDeploymentsReturnsValidJSON(t *testing.T) {
-	hd := ClearDeployments()
-	defer hd.Db.Close()
-	project := CreateTestProject(hd, "")
+	project := CreateTestProject("")
 
-	var deploy Deployments = CreateTestRevision(hd, project, "test")
+	var deploy Deployments = CreateTestRevision(project, "test")
 
 	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", project.ApiToken)
