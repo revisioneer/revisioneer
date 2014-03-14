@@ -40,9 +40,9 @@ func main() {
 	defer base.Hd.Db.Close()
 
 	r := mux.NewRouter()
-	r.HandleFunc("/deployments", base.ListDeployments).
+	r.HandleFunc("/deployments", base.WithValidProject(base.ListDeployments)).
 		Methods("GET")
-	r.HandleFunc("/deployments", base.CreateDeployment).
+	r.HandleFunc("/deployments", base.WithValidProject(base.CreateDeployment)).
 		Methods("POST")
 	r.HandleFunc("/projects", base.CreateProject).
 		Methods("POST")

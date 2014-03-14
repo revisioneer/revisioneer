@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	. "../models"
 	"database/sql"
 	"github.com/eaigner/hood"
 	_ "github.com/lib/pq"
 	"log"
+	"net/http"
 	"os"
 	"os/user"
 )
@@ -32,4 +34,19 @@ func (base *Base) Setup() {
 	newHd := hood.New(db, hood.NewPostgres())
 	newHd.Log = true
 	base.Hd = newHd
+}
+
+func (base *Base) WithValidProject(next func(http.ResponseWriter, *http.Request, Projects)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		apiToken := req.Header.Get("API-TOKEN")
+		var projects []Projects
+		base.Hd.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
+
+		if len(projects) != 1 {
+			http.Error(w, "unknown api token/ project", 500)
+			return
+		}
+
+		next(w, req, projects[0])
+	}
 }

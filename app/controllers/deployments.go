@@ -3,7 +3,6 @@ package controllers
 import (
 	. "../models"
 	"encoding/json"
-	"errors"
 	_ "github.com/eaigner/hood"
 	"io"
 	"log"
@@ -13,25 +12,7 @@ import (
 	"time"
 )
 
-func (base *Base) RequireProject(req *http.Request) (Projects, error) {
-	apiToken := req.Header.Get("API-TOKEN")
-	var projects []Projects
-	base.Hd.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
-
-	if len(projects) != 1 {
-		return Projects{}, errors.New("Unknown project")
-	}
-
-	return projects[0], nil
-}
-
-func (base *Base) ListDeployments(w http.ResponseWriter, req *http.Request) {
-	project, error := base.RequireProject(req)
-	if error != nil {
-		http.Error(w, "unknown api token/ project", 500)
-		return
-	}
-
+func (base *Base) ListDeployments(w http.ResponseWriter, req *http.Request, project Projects) {
 	limit, err := strconv.Atoi(req.URL.Query().Get("limit"))
 	if err != nil {
 		limit = 20
@@ -80,13 +61,7 @@ func (base *Base) ListDeployments(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (base *Base) CreateDeployment(w http.ResponseWriter, req *http.Request) {
-	project, error := base.RequireProject(req)
-	if error != nil {
-		http.Error(w, "unknown api token/ project", 500)
-		return
-	}
-
+func (base *Base) CreateDeployment(w http.ResponseWriter, req *http.Request, project Projects) {
 	dec := json.NewDecoder(req.Body)
 
 	var deploy Deployments
