@@ -108,5 +108,12 @@ func (base *Base) CreateDeployment(w http.ResponseWriter, req *http.Request, pro
 		}
 	}
 
-	io.WriteString(w, "")
+	b, err := json.Marshal(deploy)
+
+	if err == nil {
+		io.WriteString(w, string(b))
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		io.WriteString(w, "{}")
+	}
 }

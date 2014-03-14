@@ -54,6 +54,14 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
 	}
 
+	decoder := json.NewDecoder(response.Body)
+	var newDeploy Deployments
+	_ = decoder.Decode(&newDeploy)
+
+	if newDeploy.Sha != "asd" {
+		t.Fatalf("Did not read proper SHA: %v", newDeploy.Sha)
+	}
+
 	var deployments []Deployments
 	err := base.Hd.OrderBy("deployed_at").Find(&deployments)
 	if err != nil {
@@ -61,11 +69,6 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 	}
 	if len(deployments) != 1 {
 		t.Fatalf("More than 1 entry created: %d", len(deployments))
-	}
-
-	var newDeploy Deployments = deployments[0]
-	if newDeploy.Sha != "asd" {
-		t.Fatalf("Did not read proper SHA: %v", newDeploy.Sha)
 	}
 }
 
