@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/eaigner/hood"
+	_ "github.com/eaigner/hood"
 	"io"
 	"log"
 	"net/http"
@@ -13,8 +13,6 @@ import (
 )
 
 const STRLEN = 32
-
-var hd *hood.Hood
 
 func GenerateApiToken() string {
 	bytes := make([]byte, STRLEN)
@@ -27,7 +25,7 @@ func GenerateApiToken() string {
 	return string(encoded)
 }
 
-func CreateProject(w http.ResponseWriter, req *http.Request) {
+func (base *Base) CreateProject(w http.ResponseWriter, req *http.Request) {
 	dec := json.NewDecoder(req.Body)
 
 	var project Projects
@@ -38,7 +36,7 @@ func CreateProject(w http.ResponseWriter, req *http.Request) {
 	}
 	project.ApiToken = GenerateApiToken()
 
-	_, err := hd.Save(&project)
+	_, err := base.Hd.Save(&project)
 	if err != nil {
 		log.Fatal(err)
 	}

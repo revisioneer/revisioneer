@@ -1,6 +1,7 @@
 package main
 
 import (
+	. "./app/controllers"
 	. "./app/models"
 	"encoding/json"
 	_ "github.com/eaigner/hood"
@@ -12,13 +13,14 @@ import (
 )
 
 func init() {
-	hd = Hd()
+	base = &Base{}
+	base.Setup()
 }
 
 func ClearDeployments() {
-	hd.Exec("DELETE FROM messages")
-	hd.Exec("DELETE FROM deployments")
-	hd.Exec("DELETE FROM projects")
+	base.Hd.Exec("DELETE FROM messages")
+	base.Hd.Exec("DELETE FROM deployments")
+	base.Hd.Exec("DELETE FROM projects")
 }
 
 func CreateTestProject(apiToken string) Projects {
@@ -27,14 +29,14 @@ func CreateTestProject(apiToken string) Projects {
 	}
 
 	var project Projects = Projects{Name: "Test", ApiToken: apiToken}
-	hd.Save(&project)
+	base.Hd.Save(&project)
 	return project
 }
 
 func CreateTestRevision(project Projects, sha string) Deployments {
 	var deployedAt time.Time = time.Now()
 	var deploy Deployments = Deployments{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
-	_, _ = hd.Save(&deploy)
+	_, _ = base.Hd.Save(&deploy)
 	return deploy
 }
 
@@ -47,14 +49,14 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
-	CreateDeployment(response, request)
+	base.CreateDeployment(response, request)
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
 	}
 
 	var deployments []Deployments
-	err := hd.OrderBy("deployed_at").Find(&deployments)
+	err := base.Hd.OrderBy("deployed_at").Find(&deployments)
 	if err != nil {
 		t.Fatalf("Unable to read from PostgreSQL: %v", err)
 	}
@@ -75,7 +77,7 @@ func TestListDeploymentsReturnsWithStatusOK(t *testing.T) {
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
-	ListDeployments(response, request)
+	base.ListDeployments(response, request)
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
@@ -93,7 +95,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	request.Header.Set("API-TOKEN", projectA.ApiToken)
 	response := httptest.NewRecorder()
 
-	ListDeployments(response, request)
+	base.ListDeployments(response, request)
 
 	decoder := json.NewDecoder(response.Body)
 
@@ -107,7 +109,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	request.Header.Set("API-TOKEN", projectB.ApiToken)
 	response = httptest.NewRecorder()
 
-	ListDeployments(response, request)
+	base.ListDeployments(response, request)
 
 	decoder = json.NewDecoder(response.Body)
 
@@ -127,7 +129,7 @@ func TestListDeploymentsReturnsValidJSON(t *testing.T) {
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
-	ListDeployments(response, request)
+	base.ListDeployments(response, request)
 
 	decoder := json.NewDecoder(response.Body)
 
