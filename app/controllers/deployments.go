@@ -61,6 +61,29 @@ func (base *Base) ListDeployments(w http.ResponseWriter, req *http.Request, proj
 	}
 }
 
+func (base *Base) VerifyDeployment(w http.ResponseWriter, req *http.Request, project Projects, vars map[string]string) {
+	var deployments []Deployments
+	base.Hd.Where("sha", "=", vars["sha"]).Find(&deployments)
+
+	if len(deployments) != 1 {
+		http.Error(w, "unknown deployment revision", 404)
+		return
+	}
+
+	deployment := deployments[0]
+	deployment.Verified = true
+	base.Hd.Save(&deployment)
+
+	b, err := json.Marshal(deployment)
+
+	if err == nil {
+		io.WriteString(w, string(b))
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		io.WriteString(w, "{}")
+	}
+}
+
 func (base *Base) CreateDeployment(w http.ResponseWriter, req *http.Request, project Projects) {
 	dec := json.NewDecoder(req.Body)
 

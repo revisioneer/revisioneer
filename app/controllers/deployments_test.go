@@ -32,7 +32,7 @@ func CreateTestProject(apiToken string) Projects {
 	return project
 }
 
-func CreateTestRevision(project Projects, sha string) Deployments {
+func CreateTestDeployment(project Projects, sha string) Deployments {
 	var deployedAt time.Time = time.Now()
 	var deploy Deployments = Deployments{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
 	_, _ = base.Hd.Save(&deploy)
@@ -69,6 +69,49 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 	}
 }
 
+func TestVerifyDeploymentWithUnknownRevision(t *testing.T) {
+	ClearDeployments()
+
+	project := CreateTestProject("")
+	request, _ := http.NewRequest("POST", "/deployments/revision/verify", strings.NewReader(""))
+	request.Header.Set("API-TOKEN", project.ApiToken)
+	response := httptest.NewRecorder()
+
+	base.VerifyDeployment(response, request, project, map[string]string{"sha": "revision"})
+
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
+	}
+}
+
+func TestVerifyDeployment(t *testing.T) {
+	ClearDeployments()
+
+	project := CreateTestProject("")
+	deployment := CreateTestDeployment(project, "revision")
+
+	request, _ := http.NewRequest("POST", "/deployments/revision/verify", strings.NewReader(""))
+	request.Header.Set("API-TOKEN", project.ApiToken)
+	response := httptest.NewRecorder()
+
+	base.VerifyDeployment(response, request, project, map[string]string{"sha": "revision"})
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
+	}
+
+	var deployments []Deployments
+	base.Hd.Where("id", "=", deployment.Id).Find(&deployments)
+	if len(deployments) != 1 {
+		t.Fatalf("Wrong number of deployments")
+	}
+
+	deployment = deployments[0]
+	if !deployment.Verified {
+		t.Fatalf("Deployment should have been verified")
+	}
+}
+
 func TestListDeploymentsReturnsWithStatusOK(t *testing.T) {
 	project := CreateTestProject("")
 
@@ -87,8 +130,8 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 	projectA := CreateTestProject("testA")
 	projectB := CreateTestProject("testB")
 
-	revA := CreateTestRevision(projectA, "a")
-	revB := CreateTestRevision(projectB, "b")
+	revA := CreateTestDeployment(projectA, "a")
+	revB := CreateTestDeployment(projectB, "b")
 
 	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", projectA.ApiToken)
@@ -122,7 +165,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 func TestListDeploymentsReturnsValidJSON(t *testing.T) {
 	project := CreateTestProject("")
 
-	var deploy Deployments = CreateTestRevision(project, "test")
+	var deploy Deployments = CreateTestDeployment(project, "test")
 
 	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", project.ApiToken)

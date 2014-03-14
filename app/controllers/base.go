@@ -4,6 +4,7 @@ import (
 	. "../models"
 	"database/sql"
 	"github.com/eaigner/hood"
+	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
@@ -31,7 +32,7 @@ func (base *Base) Setup() {
 	}
 	db.SetMaxIdleConns(100)
 
-	base.Hd := hood.New(db, hood.NewPostgres())
+	base.Hd = hood.New(db, hood.NewPostgres())
 	base.Hd.Log = true
 }
 
@@ -48,4 +49,11 @@ func (base *Base) WithValidProject(next func(http.ResponseWriter, *http.Request,
 
 		next(w, req, projects[0])
 	}
+}
+
+func (base *Base) WithValidProjectAndParams(next func(http.ResponseWriter, *http.Request, Projects, map[string]string)) func(http.ResponseWriter, *http.Request) {
+	return base.WithValidProject(func(w http.ResponseWriter, req *http.Request, project Projects) {
+		vars := mux.Vars(req)
+		next(w, req, project, vars)
+	})
 }

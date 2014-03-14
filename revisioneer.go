@@ -44,6 +44,8 @@ func main() {
 		Methods("GET")
 	r.HandleFunc("/deployments", base.WithValidProject(base.CreateDeployment)).
 		Methods("POST")
+	r.HandleFunc("/deployments/{sha}/verify", base.WithValidProjectAndParams(base.VerifyDeployment)).
+		Methods("POST")
 	r.HandleFunc("/projects", base.CreateProject).
 		Methods("POST")
 	http.Handle("/", r)
