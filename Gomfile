@@ -1,3 +1,0 @@
-gom 'github.com/eaigner/hood'
-gom 'github.com/gorilla/mux'
-gom 'github.com/lib/pq'
