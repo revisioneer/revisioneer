@@ -29,7 +29,7 @@ createdb revisioneer
 sqitch deploy
 
 gom install
-go build 
+go build
 REV_DSN="user=$(whoami) dbname=revisioneer sslmode=disable" ./revisioneer
 ```
 
@@ -51,6 +51,12 @@ Make sure to keep the `api_token` around. There is currently no way to retrieve 
 
     curl -X POST "http://127.0.0.1:8080/deployments" \
       -d '{ "sha": "61722b0020", "messages": ["* added support for messages"], "new_commit_counter": 1 }' \
+      -H "API-TOKEN: q+fehEVx5Kxast2DdUUnKaQpNiZ4GTsmmaYerNwDXDE="
+    # => 200 OK
+
+#### Verify a deployment
+
+    curl -X POST "http://127.0.0.1:8080/deployments/61722b0020/verify" \
       -H "API-TOKEN: q+fehEVx5Kxast2DdUUnKaQpNiZ4GTsmmaYerNwDXDE="
     # => 200 OK
 
