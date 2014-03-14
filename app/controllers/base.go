@@ -31,9 +31,8 @@ func (base *Base) Setup() {
 	}
 	db.SetMaxIdleConns(100)
 
-	newHd := hood.New(db, hood.NewPostgres())
-	newHd.Log = true
-	base.Hd = newHd
+	base.Hd := hood.New(db, hood.NewPostgres())
+	base.Hd.Log = true
 }
 
 func (base *Base) WithValidProject(next func(http.ResponseWriter, *http.Request, Projects)) func(http.ResponseWriter, *http.Request) {
