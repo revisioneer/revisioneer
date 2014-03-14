@@ -35,6 +35,7 @@ func (base *Base) CreateProject(w http.ResponseWriter, req *http.Request) {
 		project.CreatedAt = time.Now()
 	}
 	project.ApiToken = GenerateApiToken()
+	// TODO loop until no collision on ApiToken exists
 
 	_, err := base.Hd.Save(&project)
 	if err != nil {
