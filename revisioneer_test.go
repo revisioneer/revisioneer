@@ -1,6 +1,7 @@
 package main
 
 import (
+	. "./app/models"
 	"encoding/json"
 	_ "github.com/eaigner/hood"
 	"net/http"

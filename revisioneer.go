@@ -1,12 +1,13 @@
 package main
 
 import (
+	. "./app/models"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"database/sql"
 	"github.com/eaigner/hood"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -21,46 +22,6 @@ import (
 	"syscall"
 	"time"
 )
-
-type Messages struct {
-	Id           hood.Id
-	Message      string
-	DeploymentId int
-}
-
-func (m Messages) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.Message)
-}
-
-func (m *Messages) UnmarshalJSON(data []byte) error {
-	if m == nil {
-		*m = Messages{}
-	}
-
-	var message string
-	if err := json.Unmarshal(data, &message); err != nil {
-		return err
-	}
-	(*m).Message = message
-
-	return nil
-}
-
-type Deployments struct {
-	Id               hood.Id    `json:"-"`
-	Sha              string     `json:"sha"`
-	DeployedAt       time.Time  `json:"deployed_at"`
-	ProjectId        int        `json:"-"`
-	NewCommitCounter int        `json:"new_commit_counter"`
-	Messages         []Messages `sql:"-" json:"messages"`
-}
-
-type Projects struct {
-	Id        hood.Id   `json:"-"`
-	Name      string    `json:"name"`
-	ApiToken  string    `json:"api_token"`
-	CreatedAt time.Time `json:"created_at"`
-}
 
 var db *sql.DB
 var hd *hood.Hood
@@ -234,7 +195,7 @@ func main() {
 	}
 
 	// Listen on a TCP or a UNIX domain socket (TCP here).
-	l, err := net.Listen("tcp", "0.0.0.0:" + port)
+	l, err := net.Listen("tcp", "0.0.0.0:"+port)
 	if nil != err {
 		log.Fatalln(err)
 	}
