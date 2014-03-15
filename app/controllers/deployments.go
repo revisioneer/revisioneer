@@ -97,6 +97,9 @@ func (base *Base) CreateDeployment(w http.ResponseWriter, req *http.Request, pro
 	} else {
 		deploy.DeployedAt = time.Now()
 	}
+	deploy.Verified = false
+	deploy.VerifiedAt = time.Time{}
+
 	deploy.ProjectId = int(project.Id)
 
 	_, err := base.Hd.Save(&deploy)
