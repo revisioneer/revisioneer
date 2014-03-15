@@ -13,4 +13,5 @@ type Deployments struct {
 	NewCommitCounter int        `json:"new_commit_counter"`
 	Messages         []Messages `sql:"-" json:"messages"`
 	Verified         bool       `json:"verified"`
+	VerifiedAt       time.Time  `json:"verified_at"`
 }

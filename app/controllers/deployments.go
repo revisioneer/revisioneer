@@ -71,8 +71,12 @@ func (base *Base) VerifyDeployment(w http.ResponseWriter, req *http.Request, pro
 	}
 
 	deployment := deployments[0]
-	deployment.Verified = true
-	base.Hd.Save(&deployment)
+	if !deployment.Verified {
+		deployment.Verified = true
+		deployment.VerifiedAt = time.Now()
+
+		base.Hd.Save(&deployment)
+	}
 
 	b, err := json.Marshal(deployment)
 

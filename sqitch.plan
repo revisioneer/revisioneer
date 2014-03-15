@@ -10,3 +10,4 @@
 06-add_messages_deployment_fk [05-messages] 2013-11-14T20:10:52Z Raphael Randschau <nicolai86@me.com># add foreign_key constraint for messages <-> deployments
 07-add_new_commits_counter_to_deployments [01-deployments] 2013-11-23T17:37:04Z Raphael Randschau <nicolai86@me.com># add number of new commits to deployment.\n\njust an indicator of home many commits where added between multiple deployments
 08-add_verified_to_deployments [07-add_new_commits_counter_to_deployments] 2014-03-14T19:08:07Z Raphael Randschau <nicolai86@kepler-22b.fritz.box># add column to mark deployments as verified by the application
+09-add-verified_at_to_deployments [01-deployments] 2014-03-15T20:32:51Z Raphael Randschau <nicolai86@kepler-22b.fritz.box># add verified_at timestamp to deployments

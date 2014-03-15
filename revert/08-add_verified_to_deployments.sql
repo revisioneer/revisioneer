@@ -5,5 +5,4 @@ BEGIN;
 ALTER TABLE public.deployments
   DROP COLUMN verified;
 
-
 COMMIT;
