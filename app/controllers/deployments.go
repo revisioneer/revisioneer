@@ -74,6 +74,7 @@ func (base *Base) VerifyDeployment(w http.ResponseWriter, req *http.Request, pro
 	if !deployment.Verified {
 		deployment.Verified = true
 		deployment.VerifiedAt = time.Now()
+		// deployment.VerifiedAt = Time(time.Now())
 
 		base.Hd.Save(&deployment)
 	}
@@ -98,7 +99,7 @@ func (base *Base) CreateDeployment(w http.ResponseWriter, req *http.Request, pro
 		deploy.DeployedAt = time.Now()
 	}
 	deploy.Verified = false
-	deploy.VerifiedAt = time.Time{}
+	// deploy.VerifiedAt = Time(time.Time{})
 
 	deploy.ProjectId = int(project.Id)
 

@@ -113,7 +113,7 @@ func TestVerifyDeployment(t *testing.T) {
 	if !deployment.Verified {
 		t.Fatalf("Deployment should have been verified")
 	}
-	if deployment.VerifiedAt == (time.Time{}) {
+	if deployment.VerifiedAt.IsZero() {
 		t.Fatalf("Deployment should have been verified_at")
 	}
 }
