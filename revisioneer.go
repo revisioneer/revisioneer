@@ -40,13 +40,13 @@ func main() {
 	defer base.Hd.Db.Close()
 
 	r := mux.NewRouter()
-	r.HandleFunc("/deployments", base.WithValidProject(base.ListDeployments)).
+	r.HandleFunc("/deployments", base.WithValidProject(NewDeploymentsController(base).ListDeployments)).
 		Methods("GET")
-	r.HandleFunc("/deployments", base.WithValidProject(base.CreateDeployment)).
+	r.HandleFunc("/deployments", base.WithValidProject(NewDeploymentsController(base).CreateDeployment)).
 		Methods("POST")
-	r.HandleFunc("/deployments/{sha}/verify", base.WithValidProjectAndParams(base.VerifyDeployment)).
+	r.HandleFunc("/deployments/{sha}/verify", base.WithValidProjectAndParams(NewDeploymentsController(base).VerifyDeployment)).
 		Methods("POST")
-	r.HandleFunc("/projects", base.CreateProject).
+	r.HandleFunc("/projects", NewProjectsController(base).CreateProject).
 		Methods("POST")
 	http.Handle("/", r)
 
