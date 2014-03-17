@@ -12,9 +12,17 @@ import (
 	"time"
 )
 
+type ProjectsController struct {
+	Base *Base
+}
+
+func NewProjectsController(base *Base) *ProjectsController {
+	return &ProjectsController{Base: base}
+}
+
 const STRLEN = 32
 
-func GenerateApiToken() string {
+func generateApiToken() string {
 	bytes := make([]byte, STRLEN)
 	rand.Read(bytes)
 
@@ -25,7 +33,7 @@ func GenerateApiToken() string {
 	return string(encoded)
 }
 
-func (base *Base) CreateProject(w http.ResponseWriter, req *http.Request) {
+func (controller *ProjectsController) CreateProject(w http.ResponseWriter, req *http.Request) {
 	dec := json.NewDecoder(req.Body)
 
 	var project Projects
@@ -34,10 +42,10 @@ func (base *Base) CreateProject(w http.ResponseWriter, req *http.Request) {
 	} else {
 		project.CreatedAt = time.Now()
 	}
-	project.ApiToken = GenerateApiToken()
+	project.ApiToken = generateApiToken()
 	// TODO loop until no collision on ApiToken exists
 
-	_, err := base.Hd.Save(&project)
+	_, err := controller.Base.Save(&project)
 	if err != nil {
 		log.Fatal(err)
 	}

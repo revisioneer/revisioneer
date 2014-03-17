@@ -11,20 +11,22 @@ import (
 )
 
 var base *Base
+var projectsController *ProjectsController
 
 func init() {
 	base = &Base{}
 	base.Setup()
+	projectsController = &ProjectsController{Base: base}
 }
 func ClearProjects() {
-	base.Hd.Exec("DELETE FROM projects")
+	base.Exec("DELETE FROM projects")
 }
 
 func TestCreateProject(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/projects", NewReader(`{"name": "Musterprojekt"}`))
 	response := httptest.NewRecorder()
 
-	base.CreateProject(response, request)
+	projectsController.CreateProject(response, request)
 
 	decoder := json.NewDecoder(response.Body)
 
