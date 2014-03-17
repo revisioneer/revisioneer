@@ -45,7 +45,7 @@ func (controller *ProjectsController) CreateProject(w http.ResponseWriter, req *
 	project.ApiToken = generateApiToken()
 	// TODO loop until no collision on ApiToken exists
 
-	_, err := controller.Base.Hd.Save(&project)
+	_, err := controller.Base.Save(&project)
 	if err != nil {
 		log.Fatal(err)
 	}

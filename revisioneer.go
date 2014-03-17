@@ -37,7 +37,7 @@ func main() {
 
 	writePid()
 
-	defer base.Hd.Db.Close()
+	defer base.Db.Close()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/deployments", base.WithValidProject(NewDeploymentsController(base).ListDeployments)).

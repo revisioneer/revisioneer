@@ -20,9 +20,9 @@ func init() {
 }
 
 func ClearDeployments() {
-	base.Hd.Exec("DELETE FROM messages")
-	base.Hd.Exec("DELETE FROM deployments")
-	base.Hd.Exec("DELETE FROM projects")
+	base.Exec("DELETE FROM messages")
+	base.Exec("DELETE FROM deployments")
+	base.Exec("DELETE FROM projects")
 }
 
 func CreateTestProject(apiToken string) Projects {
@@ -31,14 +31,14 @@ func CreateTestProject(apiToken string) Projects {
 	}
 
 	var project Projects = Projects{Name: "Test", ApiToken: apiToken}
-	base.Hd.Save(&project)
+	base.Save(&project)
 	return project
 }
 
 func CreateTestDeployment(project Projects, sha string) Deployments {
 	var deployedAt time.Time = time.Now()
 	var deploy Deployments = Deployments{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
-	_, _ = base.Hd.Save(&deploy)
+	_, _ = base.Save(&deploy)
 	return deploy
 }
 
@@ -66,7 +66,7 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 	}
 
 	var deployments []Deployments
-	err := base.Hd.OrderBy("deployed_at").Find(&deployments)
+	err := base.OrderBy("deployed_at").Find(&deployments)
 	if err != nil {
 		t.Fatalf("Unable to read from PostgreSQL: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestVerifyDeployment(t *testing.T) {
 	}
 
 	var deployments []Deployments
-	base.Hd.Where("id", "=", deployment.Id).Find(&deployments)
+	base.Where("id", "=", deployment.Id).Find(&deployments)
 	if len(deployments) != 1 {
 		t.Fatalf("Wrong number of deployments")
 	}

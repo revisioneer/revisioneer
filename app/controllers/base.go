@@ -13,7 +13,7 @@ import (
 )
 
 type Base struct {
-	Hd *hood.Hood
+	*hood.Hood
 }
 
 func (base *Base) Setup() {
@@ -32,15 +32,15 @@ func (base *Base) Setup() {
 	}
 	db.SetMaxIdleConns(100)
 
-	base.Hd = hood.New(db, hood.NewPostgres())
-	base.Hd.Log = true
+	base.Hood = hood.New(db, hood.NewPostgres())
+	base.Hood.Log = true
 }
 
 func (base *Base) WithValidProject(next func(http.ResponseWriter, *http.Request, Projects)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		apiToken := req.Header.Get("API-TOKEN")
 		var projects []Projects
-		base.Hd.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
+		base.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
 
 		if len(projects) != 1 {
 			http.Error(w, "unknown api token/ project", 500)

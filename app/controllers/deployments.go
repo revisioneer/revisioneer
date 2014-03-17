@@ -36,7 +36,7 @@ func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, 
 
 	// load deployments
 	var deployments []Deployments
-	err = controller.Base.Hd.
+	err = controller.Base.
 		Where("project_id", "=", project.Id).
 		OrderBy("deployed_at").
 		Desc().
@@ -49,7 +49,7 @@ func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, 
 
 	// load messages for each deployment. N+1 queries
 	for i, deployment := range deployments {
-		controller.Base.Hd.Where("deployment_id", "=", deployment.Id).Find(&deployments[i].Messages)
+		controller.Base.Where("deployment_id", "=", deployment.Id).Find(&deployments[i].Messages)
 		if len(deployments[i].Messages) == 0 {
 			deployments[i].Messages = make([]Messages, 0)
 		}
@@ -71,7 +71,7 @@ func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, 
 
 func (controller *DeploymentsController) VerifyDeployment(w http.ResponseWriter, req *http.Request, project Projects, vars map[string]string) {
 	var deployments []Deployments
-	controller.Base.Hd.Where("sha", "=", vars["sha"]).Find(&deployments)
+	controller.Base.Where("sha", "=", vars["sha"]).Find(&deployments)
 
 	if len(deployments) != 1 {
 		http.Error(w, "unknown deployment revision", 404)
@@ -84,7 +84,7 @@ func (controller *DeploymentsController) VerifyDeployment(w http.ResponseWriter,
 		deployment.VerifiedAt = time.Now()
 		// deployment.VerifiedAt = Time(time.Now())
 
-		controller.Base.Hd.Save(&deployment)
+		controller.Base.Save(&deployment)
 	}
 
 	b, err := json.Marshal(deployment)
@@ -111,14 +111,14 @@ func (controller *DeploymentsController) CreateDeployment(w http.ResponseWriter,
 
 	deploy.ProjectId = int(project.Id)
 
-	_, err := controller.Base.Hd.Save(&deploy)
+	_, err := controller.Base.Save(&deploy)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, message := range deploy.Messages {
 		message.DeploymentId = int(deploy.Id)
-		_, err = controller.Base.Hd.Save(&message)
+		_, err = controller.Base.Save(&message)
 		if err != nil {
 			log.Fatal(err)
 		}

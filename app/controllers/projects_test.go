@@ -19,7 +19,7 @@ func init() {
 	projectsController = &ProjectsController{Base: base}
 }
 func ClearProjects() {
-	base.Hd.Exec("DELETE FROM projects")
+	base.Exec("DELETE FROM projects")
 }
 
 func TestCreateProject(t *testing.T) {
