@@ -13,7 +13,7 @@ import (
 )
 
 type ProjectsController struct {
-	Base *Base
+	*Base
 }
 
 func NewProjectsController(base *Base) *ProjectsController {
@@ -45,7 +45,7 @@ func (controller *ProjectsController) CreateProject(w http.ResponseWriter, req *
 	project.ApiToken = generateApiToken()
 	// TODO loop until no collision on ApiToken exists
 
-	_, err := controller.Base.Save(&project)
+	_, err := controller.Save(&project)
 	if err != nil {
 		log.Fatal(err)
 	}
