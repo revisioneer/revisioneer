@@ -1,15 +1,16 @@
 package controllers
 
 import (
-	. "../models"
 	"encoding/json"
-	_ "github.com/eaigner/hood"
 	"io"
 	"log"
 	"math"
 	"net/http"
 	"strconv"
 	"time"
+
+	_ "github.com/eaigner/hood"
+	. "github.com/revisioneer/revisioneer/app/models"
 )
 
 type DeploymentsController struct {

@@ -1,13 +1,14 @@
 package controllers
 
 import (
-	. "../models"
 	"encoding/json"
-	_ "github.com/eaigner/hood"
 	"net/http"
 	"net/http/httptest"
 	. "strings"
 	"testing"
+
+	_ "github.com/eaigner/hood"
+	. "github.com/revisioneer/revisioneer/models"
 )
 
 var base *Base

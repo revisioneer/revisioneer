@@ -1,15 +1,16 @@
 package controllers
 
 import (
-	. "../models"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	_ "github.com/eaigner/hood"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	_ "github.com/eaigner/hood"
+	. "github.com/revisioneer/revisioneer/app/models"
 )
 
 type ProjectsController struct {

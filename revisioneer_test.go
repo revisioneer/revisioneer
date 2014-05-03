@@ -1,8 +1,8 @@
 package main
 
 import (
-	. "./app/controllers"
 	_ "github.com/eaigner/hood"
+	. "github.com/revisioneer/revisioneer/app/controllers"
 )
 
 func init() {

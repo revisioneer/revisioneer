@@ -1,15 +1,16 @@
 package main
 
 import (
-	. "./app/controllers"
 	"fmt"
-	"github.com/gorilla/mux"
-	_ "github.com/lib/pq"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"syscall"
+
+	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
+	. "github.com/revisioneer/revisioneer/app/controllers"
 )
 
 var base *Base

@@ -1,15 +1,16 @@
 package controllers
 
 import (
-	. "../models"
 	"database/sql"
-	"github.com/eaigner/hood"
-	"github.com/gorilla/mux"
-	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"os"
 	"os/user"
+
+	"github.com/eaigner/hood"
+	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
+	. "github.com/revisioneer/revisioneer/app/models"
 )
 
 type Base struct {

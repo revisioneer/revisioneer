@@ -1,14 +1,15 @@
 package controllers
 
 import (
-	. "../models"
 	"encoding/json"
-	_ "github.com/eaigner/hood"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	_ "github.com/eaigner/hood"
+	. "github.com/revisioneer/revisioneer/models"
 )
 
 var deploymentsController *DeploymentsController
