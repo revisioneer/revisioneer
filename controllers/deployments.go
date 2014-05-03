@@ -10,7 +10,7 @@ import (
 	"time"
 
 	_ "github.com/eaigner/hood"
-	. "github.com/revisioneer/revisioneer/app/models"
+	. "github.com/revisioneer/revisioneer/models"
 )
 
 type DeploymentsController struct {

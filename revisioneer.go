@@ -10,7 +10,7 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
-	. "github.com/revisioneer/revisioneer/app/controllers"
+	. "github.com/revisioneer/revisioneer/controllers"
 )
 
 var base *Base

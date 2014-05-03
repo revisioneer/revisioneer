@@ -10,7 +10,7 @@ import (
 	"github.com/eaigner/hood"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
-	. "github.com/revisioneer/revisioneer/app/models"
+	. "github.com/revisioneer/revisioneer/models"
 )
 
 type Base struct {
