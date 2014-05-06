@@ -19,7 +19,7 @@ sqitch -d revisioneer_test deploy
 ```
 
 ```
-REV_DSN="user=$(whoami) dbname=revisioneer_test sslmode=disable" go test ./...
+REV_DSN="user=$(whoami) dbname=revisioneer_test sslmode=disable" go test
 ```
 
 ## Executing
