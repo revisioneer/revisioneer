@@ -1,4 +1,4 @@
-package controllers
+package main
 
 import (
 	"encoding/json"
@@ -9,16 +9,73 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/eaigner/hood"
-	. "github.com/revisioneer/revisioneer/models"
+	"github.com/eaigner/hood"
+	"github.com/gorilla/mux"
 )
 
-type DeploymentsController struct {
-	*Base
+type Messages struct {
+	Id           hood.Id
+	Message      string
+	DeploymentId int
 }
 
-func NewDeploymentsController(base *Base) *DeploymentsController {
-	return &DeploymentsController{Base: base}
+func (m Messages) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Message)
+}
+
+func (m *Messages) UnmarshalJSON(data []byte) error {
+	if m == nil {
+		*m = Messages{}
+	}
+
+	var message string
+	if err := json.Unmarshal(data, &message); err != nil {
+		return err
+	}
+	(*m).Message = message
+
+	return nil
+}
+
+type Deployments struct {
+	Id               hood.Id    `json:"-"`
+	Sha              string     `json:"sha"`
+	DeployedAt       time.Time  `json:"deployed_at"`
+	ProjectId        int        `json:"-"`
+	NewCommitCounter int        `json:"new_commit_counter"`
+	Messages         []Messages `sql:"-" json:"messages"`
+	Verified         bool       `json:"verified"`
+	VerifiedAt       time.Time  `json:"verified_at"`
+}
+
+type DeploymentsController struct {
+	Db *hood.Hood
+}
+
+func (base *DeploymentsController) WithValidProject(next func(http.ResponseWriter, *http.Request, Projects)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		apiToken := req.Header.Get("API-TOKEN")
+		var projects []Projects
+		base.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
+
+		if len(projects) != 1 {
+			http.Error(w, "unknown api token/ project", 500)
+			return
+		}
+
+		next(w, req, projects[0])
+	}
+}
+
+func (base *DeploymentsController) WithValidProjectAndParams(next func(http.ResponseWriter, *http.Request, Projects, map[string]string)) func(http.ResponseWriter, *http.Request) {
+	return base.WithValidProject(func(w http.ResponseWriter, req *http.Request, project Projects) {
+		vars := mux.Vars(req)
+		next(w, req, project, vars)
+	})
+}
+
+func NewDeploymentsController(base *hood.Hood) *DeploymentsController {
+	return &DeploymentsController{Db: base}
 }
 
 func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, req *http.Request, project Projects) {

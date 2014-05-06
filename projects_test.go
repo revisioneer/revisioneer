@@ -1,4 +1,4 @@
-package controllers
+package main
 
 import (
 	"encoding/json"
@@ -8,10 +8,8 @@ import (
 	"testing"
 
 	_ "github.com/eaigner/hood"
-	. "github.com/revisioneer/revisioneer/models"
 )
 
-var base *Base
 var projectsController *ProjectsController
 
 func init() {

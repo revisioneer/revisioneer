@@ -1,4 +1,4 @@
-package controllers
+package main
 
 import (
 	"crypto/rand"
@@ -9,12 +9,18 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/eaigner/hood"
-	. "github.com/revisioneer/revisioneer/models"
+	"github.com/eaigner/hood"
 )
 
+type Projects struct {
+	Id        hood.Id   `json:"-"`
+	Name      string    `json:"name"`
+	ApiToken  string    `json:"api_token"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type ProjectsController struct {
-	*Base
+	Hood *hood.Hood
 }
 
 func NewProjectsController(base *Base) *ProjectsController {

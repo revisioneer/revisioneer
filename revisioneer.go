@@ -1,26 +1,48 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/user"
 	"syscall"
 
+	"github.com/eaigner/hood"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
-	. "github.com/revisioneer/revisioneer/controllers"
 )
 
-var base *Base
+func Setup() *hood.Hood {
+	var revDsn = os.Getenv("REV_DSN")
+	if revDsn == "" {
+		user, err := user.Current()
+		if err != nil {
+			log.Fatal(err)
+		}
+		revDsn = "user=" + user.Username + " dbname=revisioneer sslmode=disable"
+	}
+
+	db, err := sql.Open("postgres", revDsn)
+	if err != nil {
+		log.Fatal("failed to connect to postgres", err)
+	}
+	db.SetMaxIdleConns(100)
+
+	hood := hood.New(db, hood.NewPostgres())
+	hood.Log = true
+	return hood
+}
+
+var _hood *hood.Hood
 
 func init() {
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
 
-	base = &Base{}
-	base.Setup()
+	_hood = Setup()
 }
 
 func main() {
@@ -38,16 +60,19 @@ func main() {
 
 	writePid()
 
-	defer base.Db.Close()
+	defer _hood.Db.Close()
+
+	deployments := NewDeploymentsController(_hood)
+	projects := NewProjectsController(_hood)
 
 	r := mux.NewRouter()
-	r.HandleFunc("/deployments", base.WithValidProject(NewDeploymentsController(base).ListDeployments)).
+	r.HandleFunc("/deployments", deployments.WithValidProject(deployments.ListDeployments)).
 		Methods("GET")
-	r.HandleFunc("/deployments", base.WithValidProject(NewDeploymentsController(base).CreateDeployment)).
+	r.HandleFunc("/deployments", deployments.WithValidProject(deployments.CreateDeployment)).
 		Methods("POST")
-	r.HandleFunc("/deployments/{sha}/verify", base.WithValidProjectAndParams(NewDeploymentsController(base).VerifyDeployment)).
+	r.HandleFunc("/deployments/{sha}/verify", deployments.WithValidProjectAndParams(deployments.VerifyDeployment)).
 		Methods("POST")
-	r.HandleFunc("/projects", NewProjectsController(base).CreateProject).
+	r.HandleFunc("/projects", projects.CreateProject).
 		Methods("POST")
 	http.Handle("/", r)
 

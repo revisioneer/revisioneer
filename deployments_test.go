@@ -1,4 +1,4 @@
-package controllers
+package main
 
 import (
 	"encoding/json"
@@ -9,7 +9,6 @@ import (
 	"time"
 
 	_ "github.com/eaigner/hood"
-	. "github.com/revisioneer/revisioneer/models"
 )
 
 var deploymentsController *DeploymentsController
