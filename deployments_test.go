@@ -7,22 +7,19 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	_ "github.com/eaigner/hood"
 )
 
 var deploymentsController *DeploymentsController
 
 func init() {
-	base = &Base{}
-	base.Setup()
-	deploymentsController = &DeploymentsController{Base: base}
+	_hood = Setup()
+	deploymentsController = NewDeploymentsController(_hood)
 }
 
 func ClearDeployments() {
-	base.Exec("DELETE FROM messages")
-	base.Exec("DELETE FROM deployments")
-	base.Exec("DELETE FROM projects")
+	_hood.Exec("DELETE FROM messages")
+	_hood.Exec("DELETE FROM deployments")
+	_hood.Exec("DELETE FROM projects")
 }
 
 func CreateTestProject(apiToken string) Projects {
@@ -31,14 +28,14 @@ func CreateTestProject(apiToken string) Projects {
 	}
 
 	var project Projects = Projects{Name: "Test", ApiToken: apiToken}
-	base.Save(&project)
+	_hood.Save(&project)
 	return project
 }
 
 func CreateTestDeployment(project Projects, sha string) Deployments {
 	var deployedAt time.Time = time.Now()
 	var deploy Deployments = Deployments{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
-	_, _ = base.Save(&deploy)
+	_, _ = _hood.Save(&deploy)
 	return deploy
 }
 
@@ -66,7 +63,7 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 	}
 
 	var deployments []Deployments
-	err := base.OrderBy("deployed_at").Find(&deployments)
+	err := _hood.OrderBy("deployed_at").Find(&deployments)
 	if err != nil {
 		t.Fatalf("Unable to read from PostgreSQL: %v", err)
 	}
@@ -107,7 +104,7 @@ func TestVerifyDeployment(t *testing.T) {
 	}
 
 	var deployments []Deployments
-	base.Where("id", "=", deployment.Id).Find(&deployments)
+	_hood.Where("id", "=", deployment.Id).Find(&deployments)
 	if len(deployments) != 1 {
 		t.Fatalf("Wrong number of deployments")
 	}

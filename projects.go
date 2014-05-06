@@ -20,11 +20,11 @@ type Projects struct {
 }
 
 type ProjectsController struct {
-	Hood *hood.Hood
+	*hood.Hood
 }
 
-func NewProjectsController(base *Base) *ProjectsController {
-	return &ProjectsController{Base: base}
+func NewProjectsController(base *hood.Hood) *ProjectsController {
+	return &ProjectsController{Hood: base}
 }
 
 const STRLEN = 32

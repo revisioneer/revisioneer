@@ -49,7 +49,7 @@ type Deployments struct {
 }
 
 type DeploymentsController struct {
-	Db *hood.Hood
+	*hood.Hood
 }
 
 func (base *DeploymentsController) WithValidProject(next func(http.ResponseWriter, *http.Request, Projects)) func(http.ResponseWriter, *http.Request) {
@@ -75,7 +75,7 @@ func (base *DeploymentsController) WithValidProjectAndParams(next func(http.Resp
 }
 
 func NewDeploymentsController(base *hood.Hood) *DeploymentsController {
-	return &DeploymentsController{Db: base}
+	return &DeploymentsController{Hood: base}
 }
 
 func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, req *http.Request, project Projects) {

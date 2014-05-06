@@ -13,12 +13,11 @@ import (
 var projectsController *ProjectsController
 
 func init() {
-	base = &Base{}
-	base.Setup()
-	projectsController = &ProjectsController{Base: base}
+	_hood = Setup()
+	projectsController = NewProjectsController(_hood)
 }
 func ClearProjects() {
-	base.Exec("DELETE FROM projects")
+	_hood.Exec("DELETE FROM projects")
 }
 
 func TestCreateProject(t *testing.T) {
