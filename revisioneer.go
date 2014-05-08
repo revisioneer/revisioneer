@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"net"
@@ -10,12 +9,12 @@ import (
 	"os/user"
 	"syscall"
 
-	"github.com/eaigner/hood"
+	"github.com/eaigner/jet"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
 
-func Setup() *hood.Hood {
+func Setup() *jet.Db {
 	var revDsn = os.Getenv("REV_DSN")
 	if revDsn == "" {
 		user, err := user.Current()
@@ -25,24 +24,22 @@ func Setup() *hood.Hood {
 		revDsn = "user=" + user.Username + " dbname=revisioneer sslmode=disable"
 	}
 
-	db, err := sql.Open("postgres", revDsn)
+	db, err := jet.Open("postgres", revDsn)
 	if err != nil {
 		log.Fatal("failed to connect to postgres", err)
 	}
 	db.SetMaxIdleConns(100)
 
-	hood := hood.New(db, hood.NewPostgres())
-	hood.Log = true
-	return hood
+	return db
 }
 
-var _hood *hood.Hood
+var _db *jet.Db
 
 func init() {
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
 
-	_hood = Setup()
+	_db = Setup()
 }
 
 func main() {
@@ -60,10 +57,10 @@ func main() {
 
 	writePid()
 
-	defer _hood.Db.Close()
+	defer _db.Close()
 
-	deployments := NewDeploymentsController(_hood)
-	projects := NewProjectsController(_hood)
+	deployments := NewDeploymentsController(_db)
+	projects := NewProjectsController(_db)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/deployments", deployments.WithValidProject(deployments.ListDeployments)).

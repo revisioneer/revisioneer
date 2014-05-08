@@ -12,30 +12,30 @@ import (
 var deploymentsController *DeploymentsController
 
 func init() {
-	_hood = Setup()
-	deploymentsController = NewDeploymentsController(_hood)
+	_db = Setup()
+	deploymentsController = NewDeploymentsController(_db)
 }
 
 func ClearDeployments() {
-	_hood.Exec("DELETE FROM messages")
-	_hood.Exec("DELETE FROM deployments")
-	_hood.Exec("DELETE FROM projects")
+	_db.Query("DELETE FROM messages").Run()
+	_db.Query("DELETE FROM deployments").Run()
+	_db.Query("DELETE FROM projects").Run()
 }
 
-func CreateTestProject(apiToken string) Projects {
+func CreateTestProject(apiToken string) Project {
 	if apiToken == "" {
 		apiToken = "test"
 	}
 
-	var project Projects = Projects{Name: "Test", ApiToken: apiToken}
-	_hood.Save(&project)
+	var project Project = Project{Name: "Test", ApiToken: apiToken}
+	project.Store(_db)
 	return project
 }
 
-func CreateTestDeployment(project Projects, sha string) Deployments {
+func CreateTestDeployment(project Project, sha string) Deployment {
 	var deployedAt time.Time = time.Now()
-	var deploy Deployments = Deployments{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
-	_, _ = _hood.Save(&deploy)
+	var deploy Deployment = Deployment{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
+	deploy.Store(_db)
 	return deploy
 }
 
@@ -55,15 +55,15 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 	}
 
 	decoder := json.NewDecoder(response.Body)
-	var newDeploy Deployments
+	var newDeploy Deployment
 	_ = decoder.Decode(&newDeploy)
 
 	if newDeploy.Sha != "asd" {
 		t.Fatalf("Did not read proper SHA: %v", newDeploy.Sha)
 	}
 
-	var deployments []Deployments
-	err := _hood.OrderBy("deployed_at").Find(&deployments)
+	var deployments []Deployment
+	err := _db.Query(`SELECT * FROM deployments ORDER BY deployed_at`).Rows(&deployments)
 	if err != nil {
 		t.Fatalf("Unable to read from PostgreSQL: %v", err)
 	}
@@ -103,15 +103,10 @@ func TestVerifyDeployment(t *testing.T) {
 		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
 	}
 
-	var deployments []Deployments
-	_hood.Where("id", "=", deployment.Id).Find(&deployments)
-	if len(deployments) != 1 {
-		t.Fatalf("Wrong number of deployments")
-	}
+	_db.Query(`SELECT * FROM deployments WHERE id = $1`, deployment.Id).Rows(&deployment)
 
-	deployment = deployments[0]
 	if !deployment.Verified {
-		t.Fatalf("Deployment should have been verified")
+		t.Fatalf(`Deployment should have been verified: %v`, deployment)
 	}
 	if deployment.VerifiedAt.IsZero() {
 		t.Fatalf("Deployment should have been verified_at")
@@ -147,7 +142,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 
 	decoder := json.NewDecoder(response.Body)
 
-	var deploymentsA []Deployments
+	var deploymentsA []Deployment
 	_ = decoder.Decode(&deploymentsA)
 	if deploymentsA[0].Sha != revA.Sha || len(deploymentsA) > 1 {
 		t.Fatalf("Received foreign deployment: %v", deploymentsA)
@@ -161,7 +156,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 
 	decoder = json.NewDecoder(response.Body)
 
-	var deploymentsB []Deployments
+	var deploymentsB []Deployment
 	_ = decoder.Decode(&deploymentsB)
 	if deploymentsB[0].Sha != revB.Sha || len(deploymentsB) > 1 {
 		t.Fatalf("Received foreign deployment: %v", deploymentsB)
@@ -171,7 +166,7 @@ func TestRevisionsAreScopedByApiToken(t *testing.T) {
 func TestListDeploymentsReturnsValidJSON(t *testing.T) {
 	project := CreateTestProject("")
 
-	var deploy Deployments = CreateTestDeployment(project, "test")
+	var deploy Deployment = CreateTestDeployment(project, "test")
 
 	request, _ := http.NewRequest("GET", "/deployments", nil)
 	request.Header.Set("API-TOKEN", project.ApiToken)
@@ -181,7 +176,7 @@ func TestListDeploymentsReturnsValidJSON(t *testing.T) {
 
 	decoder := json.NewDecoder(response.Body)
 
-	var deployments []Deployments
+	var deployments []Deployment
 	err := decoder.Decode(&deployments)
 
 	if err != nil {

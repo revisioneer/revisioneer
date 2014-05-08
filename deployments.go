@@ -2,81 +2,93 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"math"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
-	"github.com/eaigner/hood"
+	"github.com/eaigner/jet"
 	"github.com/gorilla/mux"
 )
 
-type Messages struct {
-	Id           hood.Id
-	Message      string
-	DeploymentId int
+type Deployment struct {
+	Id               int       `json:"-"`
+	Sha              string    `json:"sha"`
+	DeployedAt       time.Time `json:"deployed_at"`
+	ProjectId        int       `json:"-"`
+	NewCommitCounter int       `json:"new_commit_counter"`
+	Messages         []Message `sql:"-" json:"messages"`
+	Verified         bool      `json:"verified"`
+	VerifiedAt       time.Time `json:"verified_at"`
 }
 
-func (m Messages) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.Message)
-}
-
-func (m *Messages) UnmarshalJSON(data []byte) error {
-	if m == nil {
-		m = &Messages{}
+func (d *Deployment) Store(db *jet.Db) bool {
+	var err error
+	if d.Id != 0 {
+		err = db.Query(`UPDATE deployments SET
+			sha = $1,
+			deployed_at = $2,
+			new_commit_counter = $3,
+			verified = $4, verified_at = $5
+	 WHERE id = $6`,
+			d.Sha,
+			d.DeployedAt,
+			d.NewCommitCounter,
+			d.Verified,
+			d.VerifiedAt,
+			d.Id).Run()
+	} else {
+		err = db.Query(`INSERT INTO
+			deployments
+			(sha, deployed_at, project_id, new_commit_counter, verified, verified_at)
+			VALUES
+			($1, $2, $3, $4, $5, $6) RETURNING *`,
+			d.Sha, d.DeployedAt,
+			d.ProjectId, d.NewCommitCounter,
+			d.Verified, d.VerifiedAt).Rows(d)
 	}
-
-	if err := json.Unmarshal(data, &m.Message); err != nil {
-		return err
+	if err != nil {
+		fmt.Printf(`%v: %#v`, err, d)
 	}
-
-	return nil
-}
-
-type Deployments struct {
-	Id               hood.Id    `json:"-"`
-	Sha              string     `json:"sha"`
-	DeployedAt       time.Time  `json:"deployed_at"`
-	ProjectId        int        `json:"-"`
-	NewCommitCounter int        `json:"new_commit_counter"`
-	Messages         []Messages `sql:"-" json:"messages"`
-	Verified         bool       `json:"verified"`
-	VerifiedAt       time.Time  `json:"verified_at"`
+	return err == nil
 }
 
 type DeploymentsController struct {
-	*hood.Hood
+	*jet.Db
 }
 
-func (base *DeploymentsController) WithValidProject(next func(http.ResponseWriter, *http.Request, Projects)) func(http.ResponseWriter, *http.Request) {
+func (base *DeploymentsController) WithValidProject(next func(http.ResponseWriter, *http.Request, Project)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		apiToken := req.Header.Get("API-TOKEN")
-		var projects []Projects
-		base.Where("api_token", "=", apiToken).Limit(1).Find(&projects)
 
-		if len(projects) != 1 {
+		var project Project
+		base.Query(`SELECT * FROM projects WHERE api_token = $1 LIMIT 1`, apiToken).Rows(&project)
+
+		if project == (Project{}) {
 			http.Error(w, "unknown api token/ project", 500)
 			return
 		}
 
-		next(w, req, projects[0])
+		next(w, req, project)
 	}
 }
 
-func (base *DeploymentsController) WithValidProjectAndParams(next func(http.ResponseWriter, *http.Request, Projects, map[string]string)) func(http.ResponseWriter, *http.Request) {
-	return base.WithValidProject(func(w http.ResponseWriter, req *http.Request, project Projects) {
+func (base *DeploymentsController) WithValidProjectAndParams(next func(http.ResponseWriter, *http.Request, Project, map[string]string)) func(http.ResponseWriter, *http.Request) {
+	return base.WithValidProject(func(w http.ResponseWriter, req *http.Request, project Project) {
 		vars := mux.Vars(req)
 		next(w, req, project, vars)
 	})
 }
 
-func NewDeploymentsController(base *hood.Hood) *DeploymentsController {
-	return &DeploymentsController{Hood: base}
+func NewDeploymentsController(base *jet.Db) *DeploymentsController {
+	return &DeploymentsController{Db: base}
 }
 
-func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, req *http.Request, project Projects) {
+func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, req *http.Request, project Project) {
 	limit, err := strconv.Atoi(req.URL.Query().Get("limit"))
 	if err != nil {
 		limit = 20
@@ -91,23 +103,21 @@ func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, 
 	page = int(math.Max(float64(page), 1.0))
 
 	// load deployments
-	var deployments []Deployments
-	err = controller.
-		Where("project_id", "=", project.Id).
-		OrderBy("deployed_at").
-		Desc().
-		Offset((page - 1) * limit).
-		Limit(limit).
-		Find(&deployments)
-	if err != nil {
+	var deployments []Deployment
+	if err = controller.
+		Query(`SELECT * FROM deployments
+			WHERE project_id = $1
+			ORDER BY deployed_at DESC
+			OFFSET $2 LIMIT $3`, project.Id, (page-1)*limit, limit).
+		Rows(&deployments); err != nil {
 		log.Fatal("unable to load deployments", err)
 	}
 
 	// load messages for each deployment. N+1 queries
 	for i, deployment := range deployments {
-		controller.Where("deployment_id", "=", deployment.Id).Find(&deployments[i].Messages)
+		controller.Query(`SELECT * FROM messages WHERE deployment_id = $1`, deployment.Id).Rows(&deployments[i].Messages)
 		if len(deployments[i].Messages) == 0 {
-			deployments[i].Messages = make([]Messages, 0)
+			deployments[i].Messages = make([]Message, 0)
 		}
 	}
 
@@ -125,22 +135,22 @@ func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, 
 	}
 }
 
-func (controller *DeploymentsController) VerifyDeployment(w http.ResponseWriter, req *http.Request, project Projects, vars map[string]string) {
-	var deployments []Deployments
-	controller.Where("sha", "=", vars["sha"]).Find(&deployments)
+func (controller *DeploymentsController) VerifyDeployment(w http.ResponseWriter, req *http.Request, project Project, vars map[string]string) {
+	var deployment Deployment
+	controller.Query(`SELECT * FROM deployments WHERE sha = $1 LIMIT 1`, vars["sha"]).Rows(&deployment)
 
-	if len(deployments) != 1 {
+	if reflect.DeepEqual(deployment, Deployment{}) {
 		http.Error(w, "unknown deployment revision", 404)
 		return
 	}
 
-	deployment := deployments[0]
 	if !deployment.Verified {
 		deployment.Verified = true
 		deployment.VerifiedAt = time.Now()
-		// deployment.VerifiedAt = Time(time.Now())
 
-		controller.Save(&deployment)
+		if !deployment.Store(controller.Db) {
+			log.Fatalf(`unable to mark deployment as verified`)
+		}
 	}
 
 	b, err := json.Marshal(deployment)
@@ -153,30 +163,28 @@ func (controller *DeploymentsController) VerifyDeployment(w http.ResponseWriter,
 	}
 }
 
-func (controller *DeploymentsController) CreateDeployment(w http.ResponseWriter, req *http.Request, project Projects) {
+func (controller *DeploymentsController) CreateDeployment(w http.ResponseWriter, req *http.Request, project Project) {
 	dec := json.NewDecoder(req.Body)
 
-	var deploy Deployments
+	var deploy Deployment
 	if err := dec.Decode(&deploy); err != nil && err != io.EOF {
 		log.Fatal("decode error", err)
 	} else {
 		deploy.DeployedAt = time.Now()
 	}
 	deploy.Verified = false
-	// deploy.VerifiedAt = Time(time.Time{})
 
-	deploy.ProjectId = int(project.Id)
+	deploy.ProjectId = project.Id
 
-	_, err := controller.Save(&deploy)
-	if err != nil {
-		log.Fatal(err)
+	// TODO wrap in transaction
+	if !deploy.Store(controller.Db) {
+		log.Fatal("Unable to create deployment")
 	}
 
 	for _, message := range deploy.Messages {
 		message.DeploymentId = int(deploy.Id)
-		_, err = controller.Save(&message)
-		if err != nil {
-			log.Fatal(err)
+		if !message.Store(controller.Db) {
+			log.Fatal("Unable to save message")
 		}
 	}
 

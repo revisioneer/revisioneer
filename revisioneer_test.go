@@ -1,5 +1,5 @@
 package main
 
 func init() {
-	_hood = Setup()
+	_db = Setup()
 }

@@ -13,11 +13,11 @@ import (
 var projectsController *ProjectsController
 
 func init() {
-	_hood = Setup()
-	projectsController = NewProjectsController(_hood)
+	_db = Setup()
+	projectsController = NewProjectsController(_db)
 }
 func ClearProjects() {
-	_hood.Exec("DELETE FROM projects")
+	_db.Query("DELETE FROM projects").Run()
 }
 
 func TestCreateProject(t *testing.T) {
@@ -28,7 +28,7 @@ func TestCreateProject(t *testing.T) {
 
 	decoder := json.NewDecoder(response.Body)
 
-	var project Projects
+	var project Project
 	err := decoder.Decode(&project)
 
 	if err != nil {
