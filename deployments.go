@@ -25,14 +25,12 @@ func (m Messages) MarshalJSON() ([]byte, error) {
 
 func (m *Messages) UnmarshalJSON(data []byte) error {
 	if m == nil {
-		*m = Messages{}
+		m = &Messages{}
 	}
 
-	var message string
-	if err := json.Unmarshal(data, &message); err != nil {
+	if err := json.Unmarshal(data, &m.Message); err != nil {
 		return err
 	}
-	(*m).Message = message
 
 	return nil
 }
