@@ -6,8 +6,6 @@ import (
 	"net/http/httptest"
 	. "strings"
 	"testing"
-
-	_ "github.com/eaigner/hood"
 )
 
 var projectsController *ProjectsController
