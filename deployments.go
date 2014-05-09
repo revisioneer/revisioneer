@@ -182,7 +182,7 @@ func (controller *DeploymentsController) CreateDeployment(w http.ResponseWriter,
 	}
 
 	for _, message := range deploy.Messages {
-		message.DeploymentId = int(deploy.Id)
+		message.DeploymentId = deploy.Id
 		if !message.Store(controller.Db) {
 			log.Fatal("Unable to save message")
 		}

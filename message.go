@@ -31,9 +31,9 @@ func (m *Message) UnmarshalJSON(data []byte) error {
 func (m *Message) Store(db *jet.Db) bool {
 	var err error
 	if m.Id != 0 {
-		err = db.Query(`UPDATE messages SET WHERE id = $1`, m.Id).Run()
+		err = db.Query(`UPDATE messages SET message = $1 WHERE id = $2`, m.Message, m.Id).Run()
 	} else {
-		err = db.Query(`INSERT INTO messages () VALUES () RETURNING *`).Rows(m)
+		err = db.Query(`INSERT INTO messages (message, deployment_id) VALUES ($1, $2) RETURNING *`, m.Message, m.DeploymentId).Rows(m)
 	}
 	return err == nil
 }
