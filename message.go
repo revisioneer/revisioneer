@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/eaigner/jet"
+	"github.com/splicers/jet"
 )
 
 type Message struct {

@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/eaigner/jet"
 	"github.com/gorilla/mux"
+	"github.com/splicers/jet"
 )
 
 type Deployment struct {
@@ -30,11 +30,10 @@ func (d *Deployment) Store(db *jet.Db) bool {
 	var err error
 	if d.Id != 0 {
 		err = db.Query(`UPDATE deployments SET
-			sha = $1,
-			deployed_at = $2,
+			sha = $1, deployed_at = $2,
 			new_commit_counter = $3,
 			verified = $4, verified_at = $5
-	 WHERE id = $6`,
+		WHERE id = $6`,
 			d.Sha,
 			d.DeployedAt,
 			d.NewCommitCounter,

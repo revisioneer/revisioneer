@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/eaigner/jet"
+	"github.com/splicers/jet"
 )
 
 type Project struct {

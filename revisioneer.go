@@ -9,9 +9,9 @@ import (
 	"os/user"
 	"syscall"
 
-	"github.com/eaigner/jet"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/splicers/jet"
 )
 
 func Setup() *jet.Db {
