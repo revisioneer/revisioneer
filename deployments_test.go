@@ -44,7 +44,7 @@ func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
 
 	project := CreateTestProject("")
 
-	request, _ := http.NewRequest("POST", "/deployments", strings.NewReader("{\"sha\":\"asd\"}"))
+	request, _ := http.NewRequest("POST", "/deployments", strings.NewReader(`{"sha":"asd","messages": ["A Message"]}`))
 	request.Header.Set("API-TOKEN", project.ApiToken)
 	response := httptest.NewRecorder()
 
