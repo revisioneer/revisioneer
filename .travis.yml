@@ -3,3 +3,10 @@ language: go
 go:
   - 1.2
   - tip
+
+install:
+  - go get github.com/gorilla/context
+  - go get github.com/gorilla/mux
+  - go get github.com/lib/pq
+  - go get github.com/lib/pq/oid
+  - go get github.com/splicers/jet
