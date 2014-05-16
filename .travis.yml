@@ -8,7 +8,7 @@ before_script:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install cpanminus
+  - sudo apt-get install cpanminus perl
   - cpanm --quiet --notest --skip-satisfied --force App::Sqitch
 
 go:
