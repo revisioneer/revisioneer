@@ -11,6 +11,8 @@ before_install:
   - sudo apt-get install cpanminus perl
   - cpanm --quiet --notest --skip-satisfied --force App::Sqitch
 
+after_failure: "cat /home/travis/.cpanm/build.log"
+
 go:
   - 1.2
   - tip
