@@ -3,13 +3,12 @@ language: go
 addons:
   postgresql: "9.3"
 
-perl:
-  - "5.16"
-
 before_script:
   - psql -c 'create database revisioneer;' -U postgres
 
 before_install:
+  - sudo apt-get update
+  - sudo apt-get install cpanminus
   - cpanm --quiet --installdeps --notest --skip-satisfied App::Sqitch
 
 go:
