@@ -14,6 +14,9 @@ before_install:
 after_failure:
   - cat /home/travis/.cpanm/build.log
 
+after_script:
+  - cat /home/travis/.cpanm/build.log
+
 go:
   - 1.2
   - tip
