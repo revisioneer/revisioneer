@@ -1,5 +1,14 @@
 language: go
 
+addons:
+  postgresql: "9.3"
+
+before_script:
+  - psql -c 'create database revisioneer;' -U postgres
+
+before_install:
+ - cpanm --quiet --notest --skip-satisfied App::Sqitch
+
 go:
   - 1.2
   - tip
@@ -10,3 +19,4 @@ install:
   - go get github.com/lib/pq
   - go get github.com/lib/pq/oid
   - go get github.com/splicers/jet
+  - sqitch deploy
