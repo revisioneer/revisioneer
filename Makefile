@@ -15,7 +15,7 @@ DISTDIR    := dist/$(GOOS)_$(GOARCH)
 .PHONY: default archive clean
 
 default: *.go
-	$(GOBUILD)
+	go test -v ./...
 
 archive: dist/$(ARCHIVE)
 
