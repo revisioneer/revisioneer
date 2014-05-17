@@ -9,7 +9,8 @@ before_script:
 before_install:
   - sudo apt-get update
   - sudo apt-get install cpanminus perl
-  - cpanm --notest --verbose --no-interactive --skip-satisfied App::Sqitch
+  - cpanm --notest --verbose --no-interactive ExtUtils::Depends
+  - cpanm --notest --verbose --no-interactive App::Sqitch
 
 after_failure:
   - cat /home/travis/.cpanm/build.log
