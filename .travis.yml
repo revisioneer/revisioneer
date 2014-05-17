@@ -10,7 +10,9 @@ before_install:
   - sudo apt-get update
   - sudo apt-get install cpanminus perl curl gettext
   - cpanm --notest --verbose --no-interactive --local-lib=~/perl5 Dist::Zilla Dist::Zilla::Plugin::CheckExtraTests Dist::Zilla::Plugin::LocaleTextDomain Dist::Zilla::Plugin::VersionFromModule DBD::Pg
-  - cpanm --notest --verbose --no-interactive --local-lib=~/perl5 App::Sqitch
+  - curl -O https://github.com/theory/sqitch/releases/download/v0.973/app-sqitch-0.973.tar.gz -o ~/sqitch.tar.gz
+  - tar -xvzf ~/sqitch.tar.gz
+  - cd ~/sqitch-* && dzil install
 
 after_failure:
   - cat /home/travis/.cpanm/build.log
