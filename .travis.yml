@@ -8,8 +8,8 @@ before_script:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install cpanminus perl
-  - cpanm --notest --verbose --no-interactive --local-lib=~/perl5 ExtUtils::Depends ExtUtils::Config
+  - sudo apt-get install cpanminus perl curl gettext
+  - cpanm --notest --verbose --no-interactive --local-lib=~/perl5 Dist::Zilla Dist::Zilla::Plugin::CheckExtraTests Dist::Zilla::Plugin::LocaleTextDomain Dist::Zilla::Plugin::VersionFromModule DBD::Pg
   - cpanm --notest --verbose --no-interactive --local-lib=~/perl5 App::Sqitch
 
 after_failure:
