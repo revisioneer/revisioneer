@@ -32,6 +32,21 @@ func (p *Project) Store(db *jet.Db) bool {
 	return err == nil
 }
 
+func (p *Project) IsValid(db *jet.Db) bool {
+	if p.Name == "" {
+		return false
+	}
+	if p.ApiToken == "" {
+		return false
+	}
+
+	exists := new(bool)
+	if db.Query(`select 't' from projects where api_token = '$1' limit 1`, p.ApiToken).Rows(&exists); *exists == true {
+		return false
+	}
+	return true
+}
+
 type ProjectsController struct {
 	*jet.Db
 }
@@ -64,7 +79,16 @@ func (controller *ProjectsController) CreateProject(w http.ResponseWriter, req *
 	}
 	project.ApiToken = generateApiToken()
 
-	// TODO loop until no collision on ApiToken exists
+	for i := 0; i < 10; i++ {
+		if !project.IsValid(controller.Db) {
+			project.ApiToken = generateApiToken()
+		} else {
+			break
+		}
+	}
+	if !project.IsValid(controller.Db) {
+		log.Fatal("project is not valid. %v", project)
+	}
 
 	if !project.Store(controller.Db) {
 		log.Fatal("unable to create project")
