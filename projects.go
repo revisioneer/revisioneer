@@ -94,6 +94,8 @@ func (controller *ProjectsController) CreateProject(w http.ResponseWriter, req *
 		log.Fatal("unable to create project")
 	}
 
-	b, _ := json.Marshal(project)
-	io.WriteString(w, string(b))
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	encoder := json.NewEncoder(w)
+	encoder.Encode(project)
 }

@@ -120,17 +120,11 @@ func (controller *DeploymentsController) ListDeployments(w http.ResponseWriter, 
 		}
 	}
 
-	b, err := json.Marshal(deployments)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if err == nil {
-		if string(b) == "null" {
-			io.WriteString(w, "[]")
-		} else {
-			io.WriteString(w, string(b))
-		}
 
-	} else {
-		io.WriteString(w, "[]")
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(deployments); err != nil {
+		log.Fatalf("unable to serialize deployments")
 	}
 }
 
@@ -151,15 +145,10 @@ func (controller *DeploymentsController) VerifyDeployment(w http.ResponseWriter,
 			log.Fatalf(`unable to mark deployment as verified`)
 		}
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	b, err := json.Marshal(deployment)
-
-	if err == nil {
-		io.WriteString(w, string(b))
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, "{}")
-	}
+	encoder := json.NewEncoder(w)
+	encoder.Encode(deployment)
 }
 
 func (controller *DeploymentsController) CreateDeployment(w http.ResponseWriter, req *http.Request, project Project) {
@@ -187,12 +176,8 @@ func (controller *DeploymentsController) CreateDeployment(w http.ResponseWriter,
 		}
 	}
 
-	b, err := json.Marshal(deploy)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	if err == nil {
-		io.WriteString(w, string(b))
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, "{}")
-	}
+	encoder := json.NewEncoder(w)
+	encoder.Encode(deploy)
 }
