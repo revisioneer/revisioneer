@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	check "github.com/pengux/check"
 	"github.com/splicers/jet"
 )
 
@@ -33,18 +34,16 @@ func (p *Project) Store(db *jet.Db) bool {
 }
 
 func (p *Project) IsValid(db *jet.Db) bool {
-	if p.Name == "" {
-		return false
+	s := check.Struct{
+		"Name":     check.NonEmpty{},
+		"ApiToken": check.NonEmpty{},
 	}
-	if p.ApiToken == "" {
-		return false
-	}
+	e := s.Validate(p)
 
 	exists := new(bool)
-	if db.Query(`select 't' from projects where api_token = '$1' limit 1`, p.ApiToken).Rows(&exists); *exists == true {
-		return false
-	}
-	return true
+	db.Query(`select 't' from projects where api_token = '$1' limit 1`, p.ApiToken).Rows(&exists)
+
+	return !(*exists || e.HasErrors())
 }
 
 type ProjectsController struct {
