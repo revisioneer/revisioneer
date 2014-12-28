@@ -6,216 +6,112 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
 
-var deploymentsController *DeploymentsController
+var server *httptest.Server
+var p project
+var d deployment
 
 func init() {
-	_db = Setup()
-	deploymentsController = NewDeploymentsController(_db)
+	server = httptest.NewServer(NewServer())
+
+	DB.Exec(`truncate table projects, messages, deployments;`)
 }
 
-func ClearDeployments() {
-	_db.Query("DELETE FROM messages").Run()
-	_db.Query("DELETE FROM deployments").Run()
-	_db.Query("DELETE FROM projects").Run()
-}
-
-func CreateTestProject(apiToken string) Project {
-	if apiToken == "" {
-		apiToken = "test"
-	}
-
-	var project Project = Project{Name: "Test", ApiToken: apiToken}
-	project.Store(_db)
-	return project
-}
-
-func CreateTestDeployment(project Project, sha string) Deployment {
-	var deployedAt time.Time = time.Now()
-	var deploy Deployment = Deployment{Sha: sha, DeployedAt: deployedAt, ProjectId: int(project.Id)}
-	deploy.Store(_db)
-	return deploy
-}
-
-func TestCreateDeploymentReturnsCreatedRevision(t *testing.T) {
-	ClearDeployments()
-
-	project := CreateTestProject("")
-
-	request, _ := http.NewRequest("POST", "/deployments", strings.NewReader(`{"sha":"asd","messages": ["A Message"]}`))
-	request.Header.Set("API-TOKEN", project.ApiToken)
-	response := httptest.NewRecorder()
-
-	deploymentsController.CreateDeployment(response, request, project)
-
-	if response.Code != http.StatusOK {
-		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
-	}
-
-	decoder := json.NewDecoder(response.Body)
-	var newDeploy Deployment
-	_ = decoder.Decode(&newDeploy)
-
-	if newDeploy.Sha != "asd" {
-		t.Fatalf("Did not read proper SHA: %v", newDeploy.Sha)
-	}
-
-	var deployments []Deployment
-	err := _db.Query(`SELECT * FROM deployments ORDER BY deployed_at`).Rows(&deployments)
+func TestCreateProject(t *testing.T) {
+	resp, err := http.Post(server.URL+"/projects", "application/json", strings.NewReader(`{"name": "example"}`))
 	if err != nil {
-		t.Fatalf("Unable to read from PostgreSQL: %v", err)
+		t.Fatal(err)
 	}
-	if len(deployments) != 1 {
-		t.Fatalf("More than 1 entry created: %d", len(deployments))
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("Failed to create project: %v", resp.Body)
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	dec.Decode(&p)
+
+	if p.Name != "example" {
+		t.Fatalf("Created project /w wrong name")
+	}
+
+	if p.APIToken == "" {
+		t.Fatalf("Created project wo/ wrong api token")
 	}
 }
 
-func TestVerifyDeploymentWithUnknownRevision(t *testing.T) {
-	ClearDeployments()
+func TestCreateDeployment(t *testing.T) {
+	req, _ := http.NewRequest("POST", server.URL+"/deployments", strings.NewReader(`{
+		"sha": "61722b0020",
+		"messages": [
+			"+ added support for messages",
+			"Initial Commit"
+		],
+		"new_commit_counter": 2
+	}`))
+	req.Header.Set("API-Token", p.APIToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	project := CreateTestProject("")
-	request, _ := http.NewRequest("POST", "/deployments/revision/verify", strings.NewReader(""))
-	request.Header.Set("API-TOKEN", project.ApiToken)
-	response := httptest.NewRecorder()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("Failed to create deployment: %v, %d", resp.Body, resp.StatusCode)
+	}
 
-	deploymentsController.VerifyDeployment(response, request, project, map[string]string{"sha": "revision"})
+	dec := json.NewDecoder(resp.Body)
+	dec.Decode(&d)
 
-	if response.Code != http.StatusNotFound {
-		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
+	if d.NewCommitCounter != 2 {
+		t.Fatalf("Wrong new commit counter: %d", d.NewCommitCounter)
+	}
+
+	if d.Sha != "61722b0020" {
+		t.Fatalf("Wrong commit SHA: %v", d.Sha)
+	}
+
+	if d.Verified {
+		t.Fatalf("Not verified yet")
 	}
 }
 
 func TestVerifyDeployment(t *testing.T) {
-	ClearDeployments()
-
-	project := CreateTestProject("")
-	deployment := CreateTestDeployment(project, "revision")
-
-	request, _ := http.NewRequest("POST", "/deployments/revision/verify", strings.NewReader(""))
-	request.Header.Set("API-TOKEN", project.ApiToken)
-	response := httptest.NewRecorder()
-
-	deploymentsController.VerifyDeployment(response, request, project, map[string]string{"sha": "revision"})
-
-	if response.Code != http.StatusOK {
-		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
-	}
-
-	_db.Query(`SELECT * FROM deployments WHERE id = $1`, deployment.Id).Rows(&deployment)
-
-	if !deployment.Verified {
-		t.Fatalf(`Deployment should have been verified: %v`, deployment)
-	}
-	if deployment.VerifiedAt.IsZero() {
-		t.Fatalf("Deployment should have been verified_at")
-	}
-}
-
-func TestListDeploymentsReturnsWithStatusOK(t *testing.T) {
-	project := CreateTestProject("")
-
-	request, _ := http.NewRequest("GET", "/deployments", nil)
-	request.Header.Set("API-TOKEN", project.ApiToken)
-	response := httptest.NewRecorder()
-
-	deploymentsController.ListDeployments(response, request, project)
-
-	if response.Code != http.StatusOK {
-		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
-	}
-}
-
-func TestRevisionsAreScopedByApiToken(t *testing.T) {
-	projectA := CreateTestProject("testA")
-	projectB := CreateTestProject("testB")
-
-	revA := CreateTestDeployment(projectA, "a")
-	revB := CreateTestDeployment(projectB, "b")
-
-	request, _ := http.NewRequest("GET", "/deployments", nil)
-	request.Header.Set("API-TOKEN", projectA.ApiToken)
-	response := httptest.NewRecorder()
-
-	deploymentsController.ListDeployments(response, request, projectA)
-
-	decoder := json.NewDecoder(response.Body)
-
-	var deploymentsA []Deployment
-	_ = decoder.Decode(&deploymentsA)
-	if deploymentsA[0].Sha != revA.Sha || len(deploymentsA) > 1 {
-		t.Fatalf("Received foreign deployment: %v", deploymentsA)
-	}
-
-	request, _ = http.NewRequest("GET", "/deployments", nil)
-	request.Header.Set("API-TOKEN", projectB.ApiToken)
-	response = httptest.NewRecorder()
-
-	deploymentsController.ListDeployments(response, request, projectB)
-
-	decoder = json.NewDecoder(response.Body)
-
-	var deploymentsB []Deployment
-	_ = decoder.Decode(&deploymentsB)
-	if deploymentsB[0].Sha != revB.Sha || len(deploymentsB) > 1 {
-		t.Fatalf("Received foreign deployment: %v", deploymentsB)
-	}
-}
-
-func TestListDeploymentsReturnsValidJSON(t *testing.T) {
-	project := CreateTestProject("")
-
-	var deploy Deployment = CreateTestDeployment(project, "test")
-
-	request, _ := http.NewRequest("GET", "/deployments", nil)
-	request.Header.Set("API-TOKEN", project.ApiToken)
-	response := httptest.NewRecorder()
-
-	deploymentsController.ListDeployments(response, request, project)
-
-	decoder := json.NewDecoder(response.Body)
-
-	var deployments []Deployment
-	err := decoder.Decode(&deployments)
-
+	req, _ := http.NewRequest("POST", server.URL+"/deployments/"+d.Sha+"/verify", nil)
+	req.Header.Set("API-Token", p.APIToken)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatalf("Decoding should pass: %v", err)
+		t.Fatal(err)
 	}
-	if len(deployments) != 1 || deploy.Sha != "test" {
-		t.Fatalf("Decoding failed: %v", deployments)
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Failed to verify deployment")
+	}
+
+	dec := json.NewDecoder(resp.Body)
+	dec.Decode(&d)
+
+	if !d.Verified {
+		t.Fatalf("Should have been verified")
 	}
 }
 
-var projectsController *ProjectsController
-
-func init() {
-	_db = Setup()
-	projectsController = NewProjectsController(_db)
-}
-func ClearProjects() {
-	_db.Query("DELETE FROM projects").Run()
-}
-
-func TestCreateProject(t *testing.T) {
-	request, _ := http.NewRequest("POST", "/projects", NewReader(`{"name": "Musterprojekt"}`))
-	response := httptest.NewRecorder()
-
-	projectsController.CreateProject(response, request)
-
-	decoder := json.NewDecoder(response.Body)
-
-	var project Project
-	err := decoder.Decode(&project)
-
+func TestListDeployments(t *testing.T) {
+	req, _ := http.NewRequest("GET", server.URL+"/deployments", nil)
+	req.Header.Set("API-Token", p.APIToken)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatalf("Decoding should pass: %v", err)
+		t.Fatal(err)
 	}
 
-	if project.Name != "Musterprojekt" {
-		t.Fatalf("Name was set improperly. Expected %+v to %+v", "Musterprojekt", project.Name)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Unable to list deployments")
 	}
-	if project.ApiToken == "" {
-		t.Fatalf("Expected ApiToken to be set to something")
+
+	var ds []deployment
+	dec := json.NewDecoder(resp.Body)
+	dec.Decode(&ds)
+
+	if len(ds) != 1 {
+		t.Fatalf("Wrong number of deployments")
 	}
 }
