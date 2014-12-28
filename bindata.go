@@ -174,11 +174,11 @@ type _bintree_t struct {
 }
 var _bintree = &_bintree_t{nil, map[string]*_bintree_t{
 	"migrations": &_bintree_t{nil, map[string]*_bintree_t{
+		"01-project.sql": &_bintree_t{migrations_01_project_sql, map[string]*_bintree_t{
+		}},
 		"02-deployments.sql": &_bintree_t{migrations_02_deployments_sql, map[string]*_bintree_t{
 		}},
 		"03-messages.sql": &_bintree_t{migrations_03_messages_sql, map[string]*_bintree_t{
-		}},
-		"01-project.sql": &_bintree_t{migrations_01_project_sql, map[string]*_bintree_t{
 		}},
 	}},
 }}

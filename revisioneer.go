@@ -1,22 +1,336 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"flag"
 	"fmt"
+	"io"
 	"log"
-	"net"
+	"math"
 	"net/http"
 	"os"
 	"os/user"
+	"reflect"
+	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"github.com/rubenv/sql-migrate"
-	"github.com/splicers/jet"
 )
 
-func setup() *jet.Db {
+type message struct {
+	ID           int
+	Message      string
+	DeploymentID int
+}
+
+func (m message) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Message)
+}
+
+func (m *message) UnmarshalJSON(data []byte) error {
+	if m == nil {
+		m = &message{}
+	}
+
+	if err := json.Unmarshal(data, &m.Message); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *message) Store(db *sql.DB) bool {
+	var err error
+	if m.ID != 0 {
+		_, err = db.Exec(`UPDATE messages SET message = $1 WHERE id = $2`, m.Message, m.ID)
+	} else {
+		err = db.QueryRow(`INSERT INTO messages (message, deployment_id) VALUES ($1, $2) RETURNING id`, m.Message, m.DeploymentID).Scan(&m.ID)
+	}
+	return err == nil
+}
+
+type project struct {
+	ID        int       `json:"-"`
+	Name      string    `json:"name"`
+	APIToken  string    `json:"api_token"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (p *project) Store(db *sql.DB) bool {
+	var err error
+	if p.ID != 0 {
+		_, err = db.Exec(`UPDATE projects SET WHERE id = $1`, p.ID)
+	} else {
+		err = db.QueryRow(`INSERT INTO projects
+			(name, api_token, created_at)
+			VALUES
+			($1, $2, NOW()) RETURNING id`, p.Name, p.APIToken).Scan(&p.ID)
+	}
+	return err == nil
+}
+
+func (p *project) IsValid(db *sql.DB) bool {
+	validData := p.Name != "" && p.APIToken != ""
+
+	exists := new(bool)
+	db.QueryRow(`select 't' from projects where api_token = '$1' limit 1`, p.APIToken).Scan(&exists)
+
+	return !(*exists || validData)
+}
+
+type projectsController struct {
+	*sql.DB
+}
+
+func newProjectsController(base *sql.DB) *projectsController {
+	return &projectsController{DB: base}
+}
+
+// STRLEN defines how long the generated APITokens are
+const STRLEN = 32
+
+func generateAPIToken() string {
+	bytes := make([]byte, STRLEN)
+	rand.Read(bytes)
+
+	encoding := base64.StdEncoding
+	encoded := make([]byte, encoding.EncodedLen(len(bytes)))
+	encoding.Encode(encoded, bytes)
+
+	return string(encoded)
+}
+
+func (controller *projectsController) createProject(w http.ResponseWriter, req *http.Request) {
+	dec := json.NewDecoder(req.Body)
+
+	var p project
+	if err := dec.Decode(&p); err != nil && err != io.EOF {
+		log.Fatal("decode error", err)
+	} else {
+		p.CreatedAt = time.Now()
+	}
+	p.APIToken = generateAPIToken()
+
+	for i := 0; i < 10; i++ {
+		if !p.IsValid(controller.DB) {
+			p.APIToken = generateAPIToken()
+		} else {
+			break
+		}
+	}
+	if !p.IsValid(controller.DB) {
+		log.Fatal("project is not valid. %v", p)
+	}
+
+	if !p.Store(controller.DB) {
+		log.Fatal("unable to create project")
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	encoder := json.NewEncoder(w)
+	encoder.Encode(p)
+}
+
+type deployment struct {
+	ID               int       `json:"-"`
+	Sha              string    `json:"sha"`
+	DeployedAt       time.Time `json:"deployed_at"`
+	ProjectID        int       `json:"-"`
+	NewCommitCounter int       `json:"new_commit_counter"`
+	Messages         []message `json:"messages, omitempty"`
+	Verified         bool      `json:"verified"`
+	VerifiedAt       time.Time `json:"verified_at"`
+}
+
+func (d *deployment) LoadMessages(db *sql.DB) error {
+	var messages []message
+	rows, err := db.Query(`SELECT id, message, deployment_id FROM messages WHERE deployment_id = $1`, d.ID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m message
+		if rows.Scan(&m.ID, &m.Message, &m.DeploymentID); err != nil {
+			return err
+		}
+		messages = append(messages, m)
+	}
+	d.Messages = messages
+	return nil
+}
+
+func (d *deployment) Store(db *sql.DB) bool {
+	var err error
+	if d.ID != 0 {
+		_, err = db.Exec(`UPDATE deployments SET
+			sha = $1, deployed_at = $2,
+			new_commit_counter = $3,
+			verified = $4, verified_at = $5
+		WHERE id = $6`,
+			d.Sha,
+			d.DeployedAt,
+			d.NewCommitCounter,
+			d.Verified,
+			d.VerifiedAt,
+			d.ID)
+	} else {
+		err = db.QueryRow(`INSERT INTO
+			deployments
+			(sha, deployed_at, project_id, new_commit_counter, verified, verified_at)
+			VALUES
+			($1, $2, $3, $4, $5, $6) RETURNING id`,
+			d.Sha, d.DeployedAt,
+			d.ProjectID, d.NewCommitCounter,
+			d.Verified, d.VerifiedAt).Scan(&d.ID)
+	}
+	if err != nil {
+		fmt.Printf(`%v: %#v`, err, d)
+	}
+	return err == nil
+}
+
+type deploymentsController struct {
+	*sql.DB
+}
+
+func (base *deploymentsController) WithValidProject(next func(http.ResponseWriter, *http.Request, project)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		apiToken := req.Header.Get("API-TOKEN")
+
+		var p project
+		base.QueryRow(`SELECT id, deployed_at, new_commit_counter, verified, verified_at FROM projects WHERE api_token = $1 LIMIT 1`, apiToken).Scan(&p.ID)
+
+		if p == (project{}) {
+			http.Error(w, "unknown api token/ project", 500)
+			return
+		}
+
+		next(w, req, p)
+	}
+}
+
+func (base *deploymentsController) WithValidProjectAndParams(next func(http.ResponseWriter, *http.Request, project, map[string]string)) func(http.ResponseWriter, *http.Request) {
+	return base.WithValidProject(func(w http.ResponseWriter, req *http.Request, p project) {
+		vars := mux.Vars(req)
+		next(w, req, p, vars)
+	})
+}
+
+func newDeploymentsController(base *sql.DB) *deploymentsController {
+	return &deploymentsController{DB: base}
+}
+
+func (base *deploymentsController) listDeployments(w http.ResponseWriter, req *http.Request, p project) {
+	limit, err := strconv.Atoi(req.URL.Query().Get("limit"))
+	if err != nil {
+		limit = 20
+	}
+	limit = int(math.Min(math.Abs(float64(limit)), 100.0))
+
+	var page int
+	page, err = strconv.Atoi(req.URL.Query().Get("page"))
+	if err != nil {
+		page = 1
+	}
+	page = int(math.Max(float64(page), 1.0))
+
+	// load deployments
+	var deployments []deployment
+	rows, err := base.Query(`SELECT (id, sha, deployed_at, project_id, new_commit_counter, verified, verified_at) FROM deployments
+			WHERE project_id = $1
+			ORDER BY deployed_at DESC
+			OFFSET $2 LIMIT $3`, p.ID, (page-1)*limit, limit)
+	log.Fatal("unable to load deployments", err)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	defer rows.Close()
+
+	// load deployments and messages for each deployment. N+1 queries
+	for rows.Next() {
+		d := deployment{}
+		if err := rows.Scan(&d.ID, &d.Sha, &d.DeployedAt, &d.ProjectID, &d.NewCommitCounter, &d.Verified, &d.VerifiedAt); err != nil {
+			log.Println("database error", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		d.LoadMessages(base.DB)
+		deployments = append(deployments, d)
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(deployments); err != nil {
+		log.Fatalf("unable to serialize deployments")
+	}
+}
+
+func (base *deploymentsController) verifyDeployment(w http.ResponseWriter, req *http.Request, p project, vars map[string]string) {
+	var d deployment
+	base.QueryRow(`SELECT id FROM deployments WHERE sha = $1 LIMIT 1`, vars["sha"]).Scan(&d.ID)
+
+	if reflect.DeepEqual(d, deployment{}) {
+		http.Error(w, "unknown deployment revision", 404)
+		return
+	}
+
+	if !d.Verified {
+		d.Verified = true
+		d.VerifiedAt = time.Now()
+
+		if !d.Store(base.DB) {
+			log.Fatalf(`unable to mark deployment as verified`)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	encoder := json.NewEncoder(w)
+	encoder.Encode(d)
+}
+
+func (base *deploymentsController) createDeployment(w http.ResponseWriter, req *http.Request, p project) {
+	dec := json.NewDecoder(req.Body)
+
+	var deploy deployment
+	if err := dec.Decode(&deploy); err != nil && err != io.EOF {
+		log.Fatal("decode error", err)
+	} else {
+		deploy.DeployedAt = time.Now()
+	}
+	deploy.Verified = false
+
+	deploy.ProjectID = p.ID
+
+	// TODO wrap in transaction
+	if !deploy.Store(base.DB) {
+		log.Fatal("Unable to create deployment")
+	}
+
+	for _, message := range deploy.Messages {
+		message.DeploymentID = deploy.ID
+		if !message.Store(base.DB) {
+			log.Fatal("Unable to save message")
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	encoder := json.NewEncoder(w)
+	encoder.Encode(deploy)
+}
+
+func setup() *sql.DB {
 	var revDsn = os.Getenv("REV_DSN")
 	if revDsn == "" {
 		user, err := user.Current()
@@ -26,7 +340,7 @@ func setup() *jet.Db {
 		revDsn = "user=" + user.Username + " dbname=revisioneer sslmode=disable"
 	}
 
-	db, err := jet.Open("postgres", revDsn)
+	db, err := sql.Open("postgres", revDsn)
 	if err != nil {
 		log.Fatal("failed to connect to postgres", err)
 	}
@@ -34,8 +348,6 @@ func setup() *jet.Db {
 
 	return db
 }
-
-var _db *jet.Db
 
 func runMigrations(db *sql.DB) {
 	migrations := &migrate.AssetMigrationSource{
@@ -51,53 +363,45 @@ func runMigrations(db *sql.DB) {
 	}
 }
 
+// Set by make file on build
+var (
+	Version string
+	Commit  string
+)
+
 func init() {
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
-
-	_db = setup()
-	runMigrations(_db.DB)
 }
 
 func main() {
-	var port = os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	var (
+		httpAddress  = flag.String("http.addr", ":8080", "HTTP listen address")
+		printVersion = flag.Bool("version", false, "print version and exit")
+	)
+	flag.Parse()
+
+	if *printVersion {
+		fmt.Printf("%s", Version)
+		os.Exit(0)
 	}
 
-	// Listen on a TCP or a UNIX domain socket (TCP here).
-	l, err := net.Listen("tcp", "0.0.0.0:"+port)
-	if nil != err {
-		log.Fatalln(err)
-	}
-	log.Printf("listening on %v", l.Addr())
-
-	writePid()
-
-	defer _db.Close()
-
-	deployments := NewDeploymentsController(_db)
-	projects := NewProjectsController(_db)
+	var _db = setup()
+	runMigrations(_db)
+	deployments := newDeploymentsController(_db)
+	projects := newProjectsController(_db)
 
 	r := mux.NewRouter()
-	r.HandleFunc("/deployments", deployments.WithValidProject(deployments.ListDeployments)).
+	r.HandleFunc("/deployments", deployments.WithValidProject(deployments.listDeployments)).
 		Methods("GET")
-	r.HandleFunc("/deployments", deployments.WithValidProject(deployments.CreateDeployment)).
+	r.HandleFunc("/deployments", deployments.WithValidProject(deployments.createDeployment)).
 		Methods("POST")
-	r.HandleFunc("/deployments/{sha}/verify", deployments.WithValidProjectAndParams(deployments.VerifyDeployment)).
+	r.HandleFunc("/deployments/{sha}/verify", deployments.WithValidProjectAndParams(deployments.verifyDeployment)).
 		Methods("POST")
-	r.HandleFunc("/projects", projects.CreateProject).
+	r.HandleFunc("/projects", projects.createProject).
 		Methods("POST")
 	http.Handle("/", r)
 
-	http.Serve(l, r)
-}
-
-func writePid() {
-	var file, error = os.OpenFile("tmp/rev.pid", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
-	if error == nil {
-		var line = fmt.Sprintf("%v", os.Getpid())
-		file.WriteString(line)
-		file.Close()
-	}
+	log.Printf("listening on %s", *httpAddress)
+	http.ListenAndServe(*httpAddress, r)
 }
