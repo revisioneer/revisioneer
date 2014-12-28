@@ -15,7 +15,6 @@ To run the testsuite you need to have a PostgreSQL server running & deployed. Re
 
 ``` bash
 createdb revisioneer_test
-sqitch -d revisioneer_test deploy
 ```
 
 ```
@@ -26,10 +25,7 @@ REV_DSN="user=$(whoami) dbname=revisioneer_test sslmode=disable" go test
 
 ``` bash
 createdb revisioneer
-sqitch deploy
 
-gom install
-go build
 REV_DSN="user=$(whoami) dbname=revisioneer sslmode=disable" ./revisioneer
 ```
 

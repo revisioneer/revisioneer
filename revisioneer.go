@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net"
@@ -11,10 +12,11 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/rubenv/sql-migrate"
 	"github.com/splicers/jet"
 )
 
-func Setup() *jet.Db {
+func setup() *jet.Db {
 	var revDsn = os.Getenv("REV_DSN")
 	if revDsn == "" {
 		user, err := user.Current()
@@ -35,15 +37,30 @@ func Setup() *jet.Db {
 
 var _db *jet.Db
 
+func runMigrations(db *sql.DB) {
+	migrations := &migrate.AssetMigrationSource{
+		Asset:    Asset,
+		AssetDir: AssetDir,
+		Dir:      "migrations",
+	}
+
+	if n, err := migrate.Exec(db, "postgres", migrations, migrate.Up); err != nil {
+		log.Printf("unable to migrate: %v", err)
+	} else {
+		log.Printf("Applied %d migrations!\n", n)
+	}
+}
+
 func init() {
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
 
-	_db = Setup()
+	_db = setup()
+	runMigrations(_db.DB)
 }
 
 func main() {
-	var port string = os.Getenv("PORT")
+	var port = os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}

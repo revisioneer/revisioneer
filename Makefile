@@ -25,7 +25,8 @@ GOPATH := $(CURDIR)/../_vendor:$(GOPATH)
 all: build
 
 build:
-	$(GO) build
+	go-bindata -pkg main -o bindata.go migrations/
+	$(GOBUILD)
 
 check:
 	@$(GO) list -f '{{join .Deps "\n"}}' | xargs $(GO) list -f '{{if not .Standard}}{{.ImportPath}} {{.Dir}}{{end}}' | column -t

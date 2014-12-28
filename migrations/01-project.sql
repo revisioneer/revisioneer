@@ -1,8 +1,4 @@
--- Deploy 02-project
-
-BEGIN;
-
-SET client_min_messages = 'warning';
+-- +migrate Up
 
 CREATE TABLE public.projects(
   id         SERIAL      PRIMARY KEY,
@@ -11,4 +7,6 @@ CREATE TABLE public.projects(
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMIT;
+-- +migrate Down
+
+DROP TABLE public.projects;
