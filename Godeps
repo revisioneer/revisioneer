@@ -1,0 +1,7 @@
+github.com/coopernurse/gorp
+github.com/gorilla/context
+github.com/gorilla/mux
+github.com/lib/pq
+github.com/lib/pq/oid
+github.com/rubenv/sql-migrate
+github.com/rubenv/sql-migrate/sqlparse
