@@ -1,5 +1,7 @@
 # revisioneer
 
+[![Build Status](https://travis-ci.org/revisioneer/revisioneer.svg?branch=master)](https://travis-ci.org/revisioneer/revisioneer)
+
 create deployment timelines to communicate changes to your clients.
 revisioneer is a backend written in Go which sole purpose is to store your
 deployments & changeset messages you want to communicate.

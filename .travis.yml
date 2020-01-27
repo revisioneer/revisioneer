@@ -1,33 +1,16 @@
 language: go
 
 addons:
-  postgresql: "9.3"
+  postgresql: "10"
+
+services:
+  - postgresql
+
+env:
+  REV_DSN: "travis:@localhost:5432/revisioneer"
 
 before_script:
   - psql -c 'create database revisioneer;' -U postgres
 
-before_install:
-  - sudo apt-get update
-  - sudo apt-get install cpanminus perl curl gettext
-  - cpanm --notest --verbose --no-interactive --local-lib=~/perl5 Dist::Zilla Dist::Zilla::Plugin::CheckExtraTests Dist::Zilla::Plugin::LocaleTextDomain Dist::Zilla::Plugin::VersionFromModule DBD::Pg
-  - curl -O https://github.com/theory/sqitch/releases/download/v0.973/app-sqitch-0.973.tar.gz -o ~/sqitch.tar.gz
-  - tar -xvzf ~/sqitch.tar.gz
-  - cd ~/sqitch-* && dzil install
-
-after_failure:
-  - cat /home/travis/.cpanm/build.log
-
-after_script:
-  - cat /home/travis/.cpanm/build.log
-
 go:
-  - 1.2
-  - tip
-
-install:
-  - go get github.com/gorilla/context
-  - go get github.com/gorilla/mux
-  - go get github.com/lib/pq
-  - go get github.com/lib/pq/oid
-  - go get github.com/splicers/jet
-  - sqitch deploy
+  - 1.13

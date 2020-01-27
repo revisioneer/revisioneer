@@ -18,9 +18,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
-	"github.com/rubenv/sql-migrate"
 )
 
 type message struct {
@@ -62,7 +65,7 @@ type project struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (p *project) Store(db *sql.DB) bool {
+func (p *project) Store(db *sql.DB) error {
 	var err error
 	if p.ID != 0 {
 		_, err = db.Exec(`UPDATE projects SET WHERE id = $1`, p.ID)
@@ -72,7 +75,7 @@ func (p *project) Store(db *sql.DB) bool {
 			VALUES
 			($1, $2, NOW()) RETURNING id`, p.Name, p.APIToken).Scan(&p.ID)
 	}
-	return err == nil
+	return err
 }
 
 func (p *project) IsValid(db *sql.DB) bool {
@@ -126,11 +129,11 @@ func (controller *projectsController) createProject(w http.ResponseWriter, req *
 	}
 
 	if !p.IsValid(controller.DB) {
-		log.Fatal("project is not valid. %v", p)
+		log.Fatalf("project is not valid. %v", p)
 	}
 
-	if !p.Store(controller.DB) {
-		log.Fatal("unable to create project")
+	if err := p.Store(controller.DB); err != nil {
+		log.Fatalf("unable to create project: %#v", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -249,7 +252,7 @@ func (base *deploymentsController) listDeployments(w http.ResponseWriter, req *h
 			ORDER BY deployed_at DESC
 			OFFSET $2 LIMIT $3`, p.ID, (page-1)*limit, limit)
 	if err != nil {
-		log.Fatal("unable to load deployments: %v", err)
+		log.Fatalf("unable to load deployments: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -328,7 +331,7 @@ func (base *deploymentsController) createDeployment(w http.ResponseWriter, req *
 	encoder.Encode(deploy)
 }
 
-func setup() *sql.DB {
+func setup() {
 	var dbName = os.Getenv("DATABASE")
 	if dbName == "" {
 		dbName = "revisioneer"
@@ -343,27 +346,44 @@ func setup() *sql.DB {
 		revDsn = "user=" + user.Username + " dbname=" + dbName + " sslmode=disable"
 	}
 
-	db, err := sql.Open("postgres", revDsn)
+	if err := runMigrations("postgres://" + revDsn); err != nil {
+		log.Fatalf("failed to run migrations: %#v", err)
+	}
+	db, err := sql.Open("postgres", "postgres://"+revDsn)
 	if err != nil {
-		log.Fatal("failed to connect to postgres", err)
+		log.Fatalf("failed to connect to postgres: %#v", err)
 	}
 	db.SetMaxIdleConns(100)
-
-	return db
+	DB = db
 }
 
-func runMigrations(db *sql.DB) {
-	migrations := &migrate.AssetMigrationSource{
-		Asset:    Asset,
-		AssetDir: AssetDir,
-		Dir:      "migrations",
+func runMigrations(url string) error {
+	s := bindata.Resource(AssetNames(),
+		func(name string) ([]byte, error) {
+			return Asset(name)
+		})
+	d, err := bindata.WithInstance(s)
+	if err != nil {
+		return err
 	}
 
-	if n, err := migrate.Exec(db, "postgres", migrations, migrate.Up); err != nil {
-		log.Printf("unable to migrate: %v", err)
-	} else {
-		log.Printf("Applied %d migrations!\n", n)
+	db, err := database.Open(url)
+	if err != nil {
+		return err
 	}
+	defer db.Close()
+	m, err := migrate.NewWithInstance("go-bindata", d, "postgres", db)
+	if err != nil {
+		return err
+	}
+	err = m.Up()
+	if err == nil {
+		return nil
+	}
+	if err != migrate.ErrNoChange {
+		return err
+	}
+	return nil
 }
 
 // Set by make file on build
@@ -376,7 +396,7 @@ var (
 func init() {
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
-	DB = setup()
+	setup()
 }
 
 func logHandler(next http.Handler) http.HandlerFunc {
@@ -393,8 +413,6 @@ func logHandler(next http.Handler) http.HandlerFunc {
 }
 
 func NewServer() http.Handler {
-	runMigrations(DB)
-
 	deployments := newDeploymentsController(DB)
 	projects := newProjectsController(DB)
 

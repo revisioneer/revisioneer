@@ -1,5 +1,3 @@
--- +migrate Up
-
 CREATE TABLE public.projects(
   id         SERIAL      PRIMARY KEY,
   name       TEXT        NOT NULL,
@@ -8,7 +6,3 @@ CREATE TABLE public.projects(
 
   CONSTRAINT uniq_api_token UNIQUE(api_token)
 );
-
--- +migrate Down
-
-DROP TABLE public.projects;
