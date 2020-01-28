@@ -9,17 +9,15 @@ deployments & changeset messages you want to communicate.
 You can retrieve those informations at any time, but how you display them
 is entirely up to you.
 
-The service is provisioned using ansible. So take a look at [revisions-provisioning](https://github.com/nicolai86/revisions-provisioning) if you want to run your own.
+The service has only a single dependency on a database, which you can provision any way you like.
 
 ## Tests
 
-To run the testsuite you need to have a PostgreSQL server running & deployed. Revisioneer uses [sqitch][1] for schema management. Thus you need to run
+To run the testsuite you need to have a PostgreSQL server running & deployed. Revisioneer migrates the database schema automatically, so you only need to create a database.
 
-``` bash
+```
 createdb revisioneer_test
-```
 
-```
 REV_DSN="user=$(whoami) dbname=revisioneer_test sslmode=disable" go test
 ```
 
